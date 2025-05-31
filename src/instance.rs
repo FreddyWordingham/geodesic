@@ -11,8 +11,8 @@ pub struct Instance<'a, T: RealField + Copy> {
     mesh: &'a Mesh<T>,
     /// World-to-object transformation matrix.
     world_to_object: Matrix4<T>,
-    // /// Object-to-world transformation matrix.
-    // object_to_world: Matrix4<T>,
+    /// Object-to-world transformation matrix.
+    object_to_world: Matrix4<T>,
     /// Transformed bounding box in world space.
     world_aabb: Aabb<T>,
 }
@@ -27,7 +27,7 @@ impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
         Self {
             mesh,
             world_to_object,
-            // object_to_world,
+            object_to_world,
             world_aabb,
         }
     }
@@ -52,7 +52,7 @@ impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
         let (triangle_index, mut hit) = self.mesh.intersect(&object_ray)?;
 
         // Transform hit back to world space
-        self.transform_hit_to_world_space(&mut hit);
+        self.transform_hit_to_world_space(&mut hit, ray, &object_ray);
 
         Some((triangle_index, hit))
     }
@@ -61,9 +61,12 @@ impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
     pub fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> bool {
         // Transform ray to object space
         if let Some(object_ray) = self.transform_ray_to_object_space(ray) {
-            // We need to transform the max_distance as well
-            // This is an approximation - for precise results, we'd need more complex math
-            self.mesh.intersect_any(&object_ray, max_distance)
+            // Transform max_distance from world space to object space
+            // We need to account for how the transformation affects distances along the ray
+            let world_endpoint = ray.origin + ray.direction.scale(max_distance);
+            let object_endpoint = self.world_to_object.transform_point(&world_endpoint);
+            let object_max_distance = (object_endpoint - object_ray.origin).norm();
+            self.mesh.intersect_any(&object_ray, object_max_distance)
         } else {
             false
         }
@@ -84,7 +87,7 @@ impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
     }
 
     /// Transform a hit from object space to world space.
-    fn transform_hit_to_world_space(&self, hit: &mut Hit<T>) {
+    fn transform_hit_to_world_space(&self, hit: &mut Hit<T>, world_ray: &Ray<T>, object_ray: &Ray<T>) {
         // For normal transformation, we need the inverse transpose of the upper 3x3 matrix
         // Since we're using Matrix4, we need to extract the 3x3 part and invert-transpose it
         let upper_3x3 = self.world_to_object.fixed_view::<3, 3>(0, 0);
@@ -101,7 +104,14 @@ impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
         let world_interpolated_normal_vector = normal_transform * hit.interpolated_normal.as_ref();
         hit.interpolated_normal = Unit::new_normalize(world_interpolated_normal_vector);
 
-        // Note: The distance remains the same as it's measured along the original ray
-        // If you need the actual world-space distance, you'd need to scale by the transform
+        // CRITICAL FIX: Transform the distance from object space to world space
+        // The hit distance is along the object-space ray, but we need it along the world-space ray
+        // Calculate the actual world-space intersection point
+        let object_hit_point = object_ray.origin + object_ray.direction.scale(hit.distance);
+        let world_hit_point = self.object_to_world.transform_point(&object_hit_point);
+
+        // Calculate the distance along the world ray to reach this point
+        let to_hit = world_hit_point - world_ray.origin;
+        hit.distance = to_hit.dot(&world_ray.direction);
     }
 }

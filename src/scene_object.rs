@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// Enumeration of all `Traceable` objects that can be added to a `Scene`.
-pub enum SceneObject<T: RealField + Copy> {
+pub enum SceneObject<'a, T: RealField + Copy> {
     /// A sphere primitive.
     Sphere(Sphere<T>),
     /// A triangle primitive.
@@ -18,10 +18,10 @@ pub enum SceneObject<T: RealField + Copy> {
     /// A triangle mesh.
     Mesh(Mesh<T>),
     /// A mesh instance with transformation.
-    Instance(Instance<'static, T>),
+    Instance(Instance<'a, T>),
 }
 
-impl<T: RealField + Copy + ToPrimitive> Bounded<T> for SceneObject<T> {
+impl<'a, T: RealField + Copy + ToPrimitive> Bounded<T> for SceneObject<'a, T> {
     fn aabb(&self) -> Cow<Aabb<T>> {
         match self {
             SceneObject::Sphere(sphere) => sphere.aabb(),
@@ -32,7 +32,7 @@ impl<T: RealField + Copy + ToPrimitive> Bounded<T> for SceneObject<T> {
     }
 }
 
-impl<T: RealField + Copy + ToPrimitive> Traceable<T> for SceneObject<T> {
+impl<'a, T: RealField + Copy + ToPrimitive> Traceable<T> for SceneObject<'a, T> {
     fn intersect(&self, ray: &Ray<T>) -> Option<Hit<T>> {
         match self {
             SceneObject::Sphere(sphere) => sphere.intersect(ray),

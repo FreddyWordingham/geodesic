@@ -9,14 +9,14 @@ use crate::{aabb::Aabb, bounded::Bounded, bvh::Bvh, bvh_config::BvhConfig, hit::
 /// Scene containing multiple traceable objects with BVH acceleration.
 pub struct Scene<'a, T: RealField + Copy> {
     /// Collection of traceable objects in the scene.
-    objects: &'a [SceneObject<T>],
+    objects: &'a [SceneObject<'a, T>],
     /// BVH acceleration structure for the scene.
     bvh: Bvh<T>,
 }
 
 impl<'a, T: RealField + Copy + ToPrimitive> Scene<'a, T> {
     /// Construct a new `Scene` instance.
-    pub fn new(config: &BvhConfig<T>, objects: &'a [SceneObject<T>]) -> Self {
+    pub fn new(config: &BvhConfig<T>, objects: &'a [SceneObject<'a, T>]) -> Self {
         assert!(!objects.is_empty(), "Scene must contain at least one object");
         let bvh = Bvh::new(config, &objects);
         Self { objects, bvh }

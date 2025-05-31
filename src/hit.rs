@@ -1,5 +1,6 @@
 use nalgebra::{RealField, Unit, Vector3};
 
+#[derive(Clone)]
 pub struct Hit<T: RealField + Copy> {
     /// The distance to intersection.
     pub distance: T,

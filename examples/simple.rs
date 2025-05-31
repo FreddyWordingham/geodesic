@@ -1,6 +1,6 @@
 use chromatic::{Colour, ColourMap, LabAlpha};
 use geodesic::prelude::*;
-use nalgebra::Point3;
+use nalgebra::{Point3, Similarity3, Translation3, UnitQuaternion};
 use ndarray::Array2;
 use ndarray_stats::QuantileExt;
 use photo::Image;
@@ -23,8 +23,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Scene setup
     let mut objects = Vec::new();
-    objects.push(SceneObject::Sphere(Sphere::new(Point3::new(0.0, 0.0, 0.0), 1.0)));
     objects.push(SceneObject::Mesh(Mesh::load(&bvh_config, "./assets/meshes/tree.obj")));
+    let plane = Mesh::load(&bvh_config, "./assets/meshes/plane.obj");
+    let plane_instance = Instance::new(
+        &plane,
+        Similarity3::from_parts(Translation3::new(0.0, 0.0, -1.0), UnitQuaternion::identity(), 10.0).to_homogeneous(),
+    );
+    objects.push(SceneObject::Instance(plane_instance));
     let scene = Scene::new(&bvh_config, &objects);
 
     // Render
