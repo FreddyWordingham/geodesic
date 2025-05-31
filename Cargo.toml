@@ -1,11 +1,25 @@
 [package]
-name = "ptolemy"
+name = "geodesic"
 version = "0.0.0"
 edition = "2024"
+license = "MIT"
+repository = "https://github.com/FreddyWordingham/geodesic"
+description = "A Rust library for constructing and sampling 3D geometric scenes."
+keywords = ["geometry", "3D", "sampling", "ray-tracing", "graphics"]
+categories = [
+    "game-development",
+    "graphics",
+    "mathematics",
+    "rendering",
+    "simulation",
+]
 
 [dependencies]
-chromatic = "0.0.5"
 nalgebra = "0.33.2"
-ndarray = "0.16.1"
 num-traits = "0.2.19"
+
+[dev-dependencies]
+chromatic = "0.0.5"
+ndarray = "0.16.1"
+ndarray-stats = "0.6.0"
 photo = "3.1.1"

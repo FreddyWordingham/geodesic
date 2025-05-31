@@ -29,7 +29,7 @@ pub struct Bvh<T: RealField + Copy> {
 
 impl<T: RealField + Copy + ToPrimitive> Bvh<T> {
     /// Construct a new `Bvh` instance using a builder and a collection of bounded shapes.
-    pub fn new<B: Bounded<T>>(config: BvhConfig<T>, shapes: &[B]) -> Self {
+    pub fn new<B: Bounded<T>>(config: &BvhConfig<T>, shapes: &[B]) -> Self {
         BvhBuilder::new(config).build(shapes)
     }
 
@@ -38,6 +38,11 @@ impl<T: RealField + Copy + ToPrimitive> Bvh<T> {
         assert!(!indices.is_empty(), "BVH must contain at least one geometry");
         assert!(!nodes.is_empty(), "BVH must contain at least one node");
         Self { indices, nodes, depth }
+    }
+
+    /// Get the depth of the BVH tree.
+    pub fn depth(&self) -> usize {
+        self.depth
     }
 
     /// Test for intersections between a `Ray` and objects in the BVH.

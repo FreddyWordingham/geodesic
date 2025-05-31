@@ -16,7 +16,7 @@ pub struct Scene<'a, T: RealField + Copy> {
 
 impl<'a, T: RealField + Copy + ToPrimitive> Scene<'a, T> {
     /// Construct a new `Scene` instance.
-    pub fn new(config: BvhConfig<T>, objects: &'a [SceneObject<T>]) -> Self {
+    pub fn new(config: &BvhConfig<T>, objects: &'a [SceneObject<T>]) -> Self {
         assert!(!objects.is_empty(), "Scene must contain at least one object");
         let bvh = Bvh::new(config, &objects);
         Self { objects, bvh }

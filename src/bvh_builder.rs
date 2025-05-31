@@ -30,9 +30,9 @@ pub struct BvhBuilder<T: RealField + Copy> {
 
 impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
     /// Construct a new `BvhBuilder` instance.
-    pub fn new(config: BvhConfig<T>) -> Self {
+    pub fn new(config: &BvhConfig<T>) -> Self {
         Self {
-            config,
+            config: config.clone(),
             indices: Vec::new(),
             nodes: Vec::new(),
             nodes_used: 0,

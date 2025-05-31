@@ -22,7 +22,7 @@ pub struct Mesh<T: RealField + Copy> {
 
 impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
     /// Construct a new `Mesh` instance.
-    pub fn new(bvh_config: BvhConfig<T>, triangles: Vec<Triangle<T>>) -> Self {
+    pub fn new(bvh_config: &BvhConfig<T>, triangles: Vec<Triangle<T>>) -> Self {
         let bvh = Bvh::new(bvh_config, &triangles);
         Self { triangles, bvh }
     }
@@ -49,7 +49,7 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
     }
 
     /// Load a `Mesh` from a wavefront (.obj) file.
-    pub fn load(bvh_config: BvhConfig<T>, path: &Path) -> Mesh<T>
+    pub fn load<P: AsRef<Path>>(bvh_config: &BvhConfig<T>, path: P) -> Mesh<T>
     where
         T: FromStr,
     {
@@ -58,7 +58,7 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
     }
 
     /// Construct a `Mesh` from a wavefront (.obj) string.
-    pub fn from_str(bvh_config: BvhConfig<T>, obj_string: &str) -> Mesh<T>
+    pub fn from_str(bvh_config: &BvhConfig<T>, obj_string: &str) -> Mesh<T>
     where
         T: FromStr,
     {

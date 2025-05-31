@@ -11,8 +11,8 @@ pub struct Instance<'a, T: RealField + Copy> {
     mesh: &'a Mesh<T>,
     /// World-to-object transformation matrix.
     world_to_object: Matrix4<T>,
-    /// Object-to-world transformation matrix.
-    object_to_world: Matrix4<T>,
+    // /// Object-to-world transformation matrix.
+    // object_to_world: Matrix4<T>,
     /// Transformed bounding box in world space.
     world_aabb: Aabb<T>,
 }
@@ -27,7 +27,7 @@ impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
         Self {
             mesh,
             world_to_object,
-            object_to_world,
+            // object_to_world,
             world_aabb,
         }
     }
