@@ -1,0 +1,58 @@
+//! Scene structure for `Ray` tracing.
+
+use nalgebra::{Matrix4, Point3, RealField, Unit, Vector3};
+use num_traits::ToPrimitive;
+
+use crate::{
+    bvh_config::BvhConfig, instance::Instance, mesh::Mesh, scene::Scene, scene_object::SceneObject, sphere::Sphere,
+    triangle::Triangle,
+};
+
+/// Builder for constructing `Scene` instances.
+pub struct SceneBuilder<'a, T: RealField + Copy + ToPrimitive> {
+    objects: Vec<SceneObject<'a, T>>,
+    bvh_config: BvhConfig<T>,
+}
+
+impl<'a, T: RealField + Copy + ToPrimitive> SceneBuilder<'a, T> {
+    /// Construct a new `SceneBuilder` instance.
+    pub fn new() -> Self {
+        Self {
+            objects: Vec::new(),
+            bvh_config: BvhConfig::default(),
+        }
+    }
+
+    /// Set the `Bvh` configuration for the scene
+    pub fn with_bvh_config(mut self, config: BvhConfig<T>) -> Self {
+        self.bvh_config = config;
+        self
+    }
+
+    /// Add a `Sphere` object to the scene.
+    pub fn add_sphere(mut self, centre: Point3<T>, radius: T) -> Self {
+        let sphere = Sphere::new(centre, radius);
+        self.objects.push(SceneObject::Sphere(sphere));
+        self
+    }
+
+    /// Add a `Triangle` object to the scene.
+    pub fn add_triangle(mut self, vertex_positions: [Point3<T>; 3], normals: [Unit<Vector3<T>>; 3]) -> Self {
+        let triangle = Triangle::new(vertex_positions, normals);
+        self.objects.push(SceneObject::Triangle(triangle));
+        self
+    }
+
+    /// Add a `Instance` object to the scene.
+    pub fn add_instance(mut self, mesh: &'a Mesh<T>, transform: Matrix4<T>) -> Self {
+        let instance = Instance::new(mesh, transform);
+        self.objects.push(SceneObject::Instance(instance));
+        self
+    }
+
+    /// Build the `Scene` with the current configuration and `SceneObjects`.
+    pub fn build(self) -> Scene<'a, T> {
+        assert!(!self.objects.is_empty(), "Scene must contain at least one object");
+        Scene::new(&self.bvh_config, self.objects)
+    }
+}

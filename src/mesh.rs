@@ -53,7 +53,8 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
     where
         T: FromStr,
     {
-        let file_string = read_to_string(path).unwrap();
+        let file_string =
+            read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read .obj file at path: {}", path.as_ref().display()));
         Self::from_str(bvh_config, &file_string)
     }
 

@@ -1,8 +1,15 @@
 //! Bounding Volume Hierarchy configuration structure.
 
 use nalgebra::RealField;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+const DEFAULT_TRAVERSE_COST: f64 = 1.0;
+const DEFAULT_INTERSECT_COST: f64 = 1.25;
+const DEFAULT_SAH_BUCKETS: usize = 16;
+const DEFAULT_MAX_SHAPES_PER_NODE: usize = 4;
+const DEFAULT_MAX_DEPTH: usize = 64;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BvhConfig<T: RealField + Copy> {
     /// Cost of intersecting a primitive.
     pub traverse_cost: T,
@@ -34,8 +41,14 @@ impl<T: RealField + Copy> BvhConfig<T> {
     }
 }
 
-impl Default for BvhConfig<f32> {
+impl<T: RealField + Copy> Default for BvhConfig<T> {
     fn default() -> Self {
-        Self::new(1.0, 1.25, 16, 4, 64)
+        Self::new(
+            T::from_f64(DEFAULT_TRAVERSE_COST).unwrap(),
+            T::from_f64(DEFAULT_INTERSECT_COST).unwrap(),
+            DEFAULT_SAH_BUCKETS,
+            DEFAULT_MAX_SHAPES_PER_NODE,
+            DEFAULT_MAX_DEPTH,
+        )
     }
 }

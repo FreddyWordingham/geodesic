@@ -109,6 +109,7 @@
 // #![allow(clippy::unwrap_used, reason = "In some cases unwrap can be guaranteed to succeed.")]
 
 mod aabb;
+mod assets;
 mod bounded;
 mod bvh;
 mod bvh_builder;
@@ -117,9 +118,14 @@ mod camera;
 mod hit;
 mod instance;
 mod mesh;
+mod ortho_camera;
+mod persistable;
+mod plane;
 mod ray;
 mod scene;
+mod scene_builder;
 mod scene_object;
+mod serialization;
 mod sphere;
 mod traceable;
 mod triangle;
@@ -127,15 +133,21 @@ mod triangle;
 pub mod prelude {
     pub use crate::{
         aabb::Aabb, //
+        assets::Assets,
         bounded::Bounded,
         bvh_config::BvhConfig,
         camera::Camera,
         hit::Hit,
         instance::Instance,
         mesh::Mesh,
+        ortho_camera::OrthoCamera,
+        persistable::Persistable,
+        plane::Plane,
         ray::Ray,
         scene::Scene,
+        scene_builder::SceneBuilder,
         scene_object::SceneObject,
+        serialization::*,
         sphere::Sphere,
         traceable::Traceable,
         triangle::Triangle,

@@ -4,22 +4,30 @@ use nalgebra::RealField;
 use num_traits::ToPrimitive;
 use std::borrow::Cow;
 
-use crate::{aabb::Aabb, bounded::Bounded, bvh::Bvh, bvh_config::BvhConfig, hit::Hit, ray::Ray, scene_object::SceneObject};
+use crate::{
+    aabb::Aabb, bounded::Bounded, bvh::Bvh, bvh_config::BvhConfig, hit::Hit, ray::Ray, scene_builder::SceneBuilder,
+    scene_object::SceneObject,
+};
 
 /// Scene containing multiple traceable objects with BVH acceleration.
-pub struct Scene<'a, T: RealField + Copy> {
+pub struct Scene<'a, T: RealField + Copy + ToPrimitive> {
     /// Collection of traceable objects in the scene.
-    objects: &'a [SceneObject<'a, T>],
+    objects: Vec<SceneObject<'a, T>>,
     /// BVH acceleration structure for the scene.
     bvh: Bvh<T>,
 }
 
 impl<'a, T: RealField + Copy + ToPrimitive> Scene<'a, T> {
     /// Construct a new `Scene` instance.
-    pub fn new(config: &BvhConfig<T>, objects: &'a [SceneObject<'a, T>]) -> Self {
+    pub fn new(config: &BvhConfig<T>, objects: Vec<SceneObject<'a, T>>) -> Self {
         assert!(!objects.is_empty(), "Scene must contain at least one object");
         let bvh = Bvh::new(config, &objects);
         Self { objects, bvh }
+    }
+
+    /// Return a builder for constructing a `Scene`.
+    pub fn builder() -> SceneBuilder<'a, T> {
+        SceneBuilder::new()
     }
 
     /// Test for an intersection between a ray and any object in the scene.
