@@ -1,144 +1,248 @@
 # Geodesic
 
-[![crates.io](https://img.shields.io/crates/v/geodesic.svg)](https://crates.io/crates/geodesic)
-[![Documentation](https://docs.rs/geodesic/badge.svg)](https://docs.rs/geodesic)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-A high-performance ray tracing library for Rust, featuring efficient Bounding Volume Hierarchy (BVH) acceleration structures and support for a range of geometric primitives.
+A high-performance ray tracing library written in Rust, featuring a flexible architecture with BVH acceleration, multiple geometric primitives, and serializable scene descriptions.
 
 ## Features
 
-- 🚀 **High Performance**: Optimized BVH acceleration structures with Surface Area Heuristic (SAH)
-- 📐 **Multiple Primitives**: Support for spheres, AABBs, triangles, and meshes
-- 🎯 **Ray Tracing**: Efficient ray-geometry intersection testing
-- 📦 **Mesh Loading**: Built-in Wavefront (.obj) file loader
-- 🔄 **Instancing**: Mesh instancing with transformation matrices
-- 📸 **Camera System**: Configurable perspective camera with field-of-view controls
-- 🎨 **Rendering Pipeline**: Complete ray casting to distance field rendering
-- 📊 **Generic Design**: Works with any real number type (f32, f64, etc.)
+- **High Performance**: BVH (Bounding Volume Hierarchy) acceleration with Surface Area Heuristic optimization
+- **Flexible Geometry**: Support for spheres, planes, triangles, and complex meshes
+- **Generic Design**: Works with both `f32` and `f64` floating-point precision
+- **Scene Management**: Builder pattern for constructing scenes with reusable assets
+- **Multiple Camera Types**: Perspective and orthographic projection support
+- **Serialization**: JSON-based scene, camera, and asset descriptions
+- **OBJ File Support**: Load triangle meshes from Wavefront .obj files
+- **Instance System**: Efficient rendering of multiple copies with transformations
+- **Parallel Processing**: Built for multi-threaded ray tracing applications
 
 ## Quick Start
 
-Add this to your `Cargo.toml`:
-
-```toml
-[dependencies]
-geodesic = "0.0.0"
-```
-
-### Basic Example
+### Basic Usage
 
 ```rust
 use geodesic::prelude::*;
-use nalgebra::Point3;
 
-// Configure BVH acceleration structure
-let bvh_config = BvhConfig::new(
-    1.0,    // traverse_cost
-    1.25,   // intersect_cost
-    16,     // sah_buckets
-    4,      // max_shapes_per_node
-    16      // max_depth
-);
+// Create a simple scene
+let scene = Scene::builder()
+    .add_sphere(Point3::new(0.0, 0.0, 0.0), 1.0)
+    .add_triangle(
+        [Point3::new(0.0, 0.0, 0.0), Point3::new(1.0, 0.0, 0.0), Point3::new(0.0, 1.0, 0.0)],
+        [Unit::new_normalize(Vector3::z()); 3]
+    )
+    .build();
 
 // Set up camera
-let resolution = [600, 800];        // [height, width]
 let camera = Camera::new(
-    Point3::new(10.0, 10.0, 10.0),  // position
-    Point3::new(0.0, 0.0, 3.0),     // look_at
-    90.0_f32.to_radians(),          // field_of_view
-    resolution,
+    Point3::new(5.0, 5.0, 5.0),              // position
+    Point3::new(0.0, 0.0, 0.0),              // look_at
+    CameraType::Perspective(60.0_f32.to_radians()), // field of view
+    [600, 800]                               // resolution [height, width]
 );
 
-// Create scene objects
-let mut objects = Vec::new();
-objects.push(SceneObject::Sphere(Sphere::new(Point3::new(0.0, 0.0, 0.0), 1.0)));
-objects.push(SceneObject::Mesh(Mesh::load(&bvh_config, "./assets/tree.obj")));
+// Trace a ray
+let ray = camera.generate_ray([300, 400]); // pixel coordinates
+if let Some((_object_index, hit)) = scene.intersect(&ray) {
+    println!("Hit at distance: {}", hit.distance);
+}
+```
 
-// Build scene with BVH acceleration
-let scene = Scene::new(&bvh_config, &objects);
+### Using Assets and Serialization
 
-// Render distance field
+```rust
+use geodesic::prelude::*;
+
+// Load scene from JSON files
+let assets = SerializedAssets::<f32>::load("assets.json")?.build();
+let scene = SerializedScene::<f32>::load("scene.json")?.build(&assets);
+let camera = SerializedCamera::load("camera.json")?.build();
+
+// Render the scene
+let resolution = camera.resolution();
 for row in 0..resolution[0] {
     for col in 0..resolution[1] {
         let ray = camera.generate_ray([row, col]);
-        if let Some((_object_index, hit)) = scene.intersect(&ray) {
-            let distance = hit.distance;
-            // ...
+        if let Some((_index, hit)) = scene.intersect(&ray) {
+            // Process hit...
         }
     }
 }
 ```
 
-## Core Components
+## Architecture
 
-### Geometry Primitives
+### Core Components
 
-- **Sphere**: Basic sphere primitive with center and radius
-- **AABB**: Axis-Aligned Bounding Box with min/max corners
-- **Triangle**: Optimised triangle with pre-computed edges and normals
-- **Mesh**: Triangle mesh with BVH acceleration and .obj loading support
+- **Primitives**: `Sphere`, `Plane`, `Triangle` - Basic geometric shapes
+- **Mesh**: Collections of triangles loaded from .obj files
+- **Instance**: Transformed references to meshes for efficient duplication
+- **Scene**: Container for all objects with BVH acceleration
+- **Camera**: Ray generation for perspective and orthographic projections
+- **Assets**: Resource management for meshes and configurations
 
-### Scene Management
+### Traits
 
-- **Scene**: Top-level container for all objects with BVH acceleration
-- **SceneObject**: Enumeration wrapper for different geometry types
-- **Instance**: Mesh instancing with transformation matrices
+- **`Bounded<T>`**: Objects that can provide an axis-aligned bounding box
+- **`Traceable<T>`**: Objects that can be intersected by rays
+- **`Persistable`**: Automatic JSON serialization/deserialization
 
-### Acceleration Structures
+### Performance Features
 
-- **BvhConfig**: Configurable parameters for BVH construction
-- **BVH**: Bounding Volume Hierarchy with Surface Area Heuristic
+- **BVH Acceleration**: Logarithmic ray-object intersection complexity
+- **Surface Area Heuristic**: Optimal BVH construction for fast traversal
+- **Shadow Ray Optimization**: Early termination for visibility queries
+- **Parallel-Friendly**: Immutable scene data suitable for multi-threading
 
-### Ray Tracing
+## File Formats
 
-- **Ray**: Ray structure with origin, direction, and optimisation data
-- **Hit**: Intersection result with distance and normal information
-- **Camera**: Perspective camera for generating sampling rays
+### Scene Description (`scene.json`)
 
-## File Format Support
-
-### Wavefront OBJ
-
-The library supports loading triangle meshes from Wavefront (.obj) files:
-
-```rust
-let mesh = Mesh::load(&bvh_config, "./path/to/model.obj");
+```json
+{
+  "objects": [
+    {
+      "Sphere": [[0.0, 0.0, 0.0], 1.0]
+    },
+    {
+      "Plane": [
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0]
+      ]
+    },
+    {
+      "Triangle": [
+        [
+          [0.0, 0.0, 0.0],
+          [1.0, 0.0, 0.0],
+          [0.0, 1.0, 0.0]
+        ],
+        [
+          [0.0, 1.0, 0.0],
+          [1.0, 1.0, 1.0],
+          [1.0, 2.0, 1.0]
+        ]
+      ]
+    },
+    {
+      "Instance": ["mesh_name", null]
+    }
+  ]
+}
 ```
 
-**Supported features:**
+### Camera Configuration (`camera.json`)
 
-- Vertex positions (`v`)
-- Vertex normals (`vn`)
-- Triangular faces (`f`)
+```json
+{
+  "camera_type": {
+    "Perspective": 1.047197551
+  },
+  "position": [10.0, 10.0, 10.0],
+  "look_at": [0.0, 0.0, 3.0],
+  "resolution": [1024, 1024]
+}
+```
 
-**Requirements:**
+### Asset Management (`assets.json`)
 
-- Meshes must be triangulated
-- Faces must include both vertex and normal indices (format: `v//vn`)
-
-## Performance Considerations
-
-### BVH Optimization
-
-The library uses Surface Area Heuristic (SAH) for optimal BVH construction:
-
-- **Traverse Cost**: Higher values favor broader trees (fewer internal nodes)
-- **Intersect Cost**: Higher values favor deeper trees (fewer primitives per leaf)
-- **SAH Buckets**: More buckets provide better splits but trade-off with a slower construction time
-- **Max Shapes Per Node**: Controls leaf size vs. tree depth trade-off
-
-### Memory Usage
-
-- BVH construction requires temporary memory proportional to scene size
-- Mesh data is stored efficiently with pre-computed edge vectors
-- Ray intersection uses stack-based traversal (no heap allocation)
+```json
+{
+  "bvh_config": {
+    "traverse_cost": 1.0,
+    "intersect_cost": 1.25,
+    "sah_buckets": 16,
+    "max_shapes_per_node": 4,
+    "max_depth": 64
+  },
+  "meshes": [
+    ["cube", "./assets/meshes/cube.obj"],
+    ["tree", "./assets/meshes/tree.obj"]
+  ]
+}
+```
 
 ## Examples
 
-See the `simple.rs` example for a complete rendering pipeline that:
+### Simple Ray Tracer
 
-1. Sets up a scene with a sphere and mesh
-2. Configures a perspective camera
-3. Renders a distance field image
-4. Saves the result as a PNG file
+```rust
+use geodesic::prelude::*;
+use rayon::prelude::*;
+
+fn render_scene() -> Result<(), Box<dyn std::error::Error>> {
+    // Load scene components
+    let assets = SerializedAssets::<f32>::load("assets.json")?.build();
+    let scene = SerializedScene::<f32>::load("scene.json")?.build(&assets);
+    let camera = SerializedCamera::load("camera.json")?.build();
+
+    let resolution = camera.resolution();
+    let sun_position = Point3::new(10.0, -5.0, 20.0);
+
+    // Generate all pixel coordinates
+    let pixels: Vec<(usize, usize)> = (0..resolution[0])
+        .flat_map(|row| (0..resolution[1]).map(move |col| (row, col)))
+        .collect();
+
+    // Parallel ray tracing
+    let results: Vec<f32> = pixels
+        .into_par_iter()
+        .map(|(row, col)| {
+            let ray = camera.generate_ray([row, col]);
+
+            if let Some((_index, hit)) = scene.intersect(&ray) {
+                // Simple lighting calculation
+                let hit_pos = ray.origin + ray.direction.scale(hit.distance - 0.01);
+                let light_dir = Unit::new_normalize(sun_position - hit_pos);
+                let diffuse = hit.geometric_normal.dot(&light_dir).max(0.0);
+
+                // Shadow test
+                let shadow_ray = Ray::new(hit_pos, light_dir);
+                let in_shadow = scene.intersect_any(&shadow_ray, 100.0);
+
+                if in_shadow { 0.1 } else { 0.1 + diffuse * 0.9 }
+            } else {
+                0.0 // Background
+            }
+        })
+        .collect();
+
+    // Save results...
+    Ok(())
+}
+```
+
+### BVH Configuration
+
+```rust
+use geodesic::prelude::*;
+
+// Custom BVH settings for different use cases
+let fast_build_config = BvhConfig::new(
+    1.0,  // traverse_cost
+    1.0,  // intersect_cost
+    8,    // sah_buckets (fewer for faster build)
+    8,    // max_shapes_per_node (more for faster build)
+    32    // max_depth (less for faster build)
+);
+
+let quality_config = BvhConfig::new(
+    1.0,  // traverse_cost
+    1.5,  // intersect_cost
+    32,   // sah_buckets (more for better quality)
+    2,    // max_shapes_per_node (fewer for better quality)
+    64    // max_depth (more for better quality)
+);
+```
+
+## Dependencies
+
+- `nalgebra`: Linear algebra operations
+- `num-traits`: Numeric trait abstractions
+- `serde`: Serialization framework
+- `rayon`: Data parallelism (for applications)
+
+## Performance Tips
+
+1. **Use f32 for most applications** - Provides good precision with better performance (~2x faster than f64)
+2. **Tune BVH parameters** - Adjust based on scene complexity and performance requirements
+3. **Leverage parallel processing** - Scene data is immutable and thread-safe
+4. **Use shadow ray optimization** - Call `intersect_any()` instead of `intersect()` for visibility tests
+5. **Batch similar operations** - Process multiple rays together for better cache performance

@@ -108,48 +108,31 @@
 // #![allow(clippy::unwrap_in_result, reason = "In some cases unwrap can be guaranteed to succeed.")]
 // #![allow(clippy::unwrap_used, reason = "In some cases unwrap can be guaranteed to succeed.")]
 
-mod aabb;
-mod assets;
-mod bounded;
 mod bvh;
-mod bvh_builder;
-mod bvh_config;
-mod camera;
-mod hit;
-mod instance;
-mod mesh;
-mod ortho_camera;
-mod persistable;
-mod plane;
-mod ray;
+mod geometry;
+mod rt;
 mod scene;
-mod scene_builder;
-mod scene_object;
 mod serialization;
-mod sphere;
-mod traceable;
-mod triangle;
+mod traits;
 
 pub mod prelude {
     pub use crate::{
-        aabb::Aabb, //
-        assets::Assets,
-        bounded::Bounded,
-        bvh_config::BvhConfig,
-        camera::Camera,
-        hit::Hit,
-        instance::Instance,
-        mesh::Mesh,
-        ortho_camera::OrthoCamera,
-        persistable::Persistable,
-        plane::Plane,
-        ray::Ray,
-        scene::Scene,
-        scene_builder::SceneBuilder,
-        scene_object::SceneObject,
-        serialization::*,
-        sphere::Sphere,
-        traceable::Traceable,
-        triangle::Triangle,
+        bvh::{
+            bvh::{Bvh, BvhNode},
+            bvh_builder::BvhBuilder,
+            bvh_config::BvhConfig,
+        },
+        geometry::{aabb::Aabb, mesh::Mesh, plane::Plane, sphere::Sphere, triangle::Triangle},
+        rt::{hit::Hit, ray::Ray},
+        scene::{
+            assets::Assets,
+            camera::{Camera, CameraType},
+            instance::Instance,
+            scene::Scene,
+            scene_builder::SceneBuilder,
+            scene_object::SceneObject,
+        },
+        serialization::{SerializedAssets, SerializedCamera, SerializedCameraType, SerializedScene, SerializedSceneObject},
+        traits::{bounded::Bounded, persistable::Persistable, traceable::Traceable},
     };
 }

@@ -2,6 +2,16 @@ use geodesic::prelude::*;
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
+    // Camera
+    let camera = SerializedCamera {
+        camera_type: SerializedCameraType::Perspective(90.0_f32.to_radians()), // field_of_view
+        position: [10.0, 10.0, 10.0],                                          // position
+        look_at: [0.0, 0.0, 3.0],                                              // look_at
+        resolution: [600, 800],                                                // [height, width]
+    };
+    camera.save("./inputs/camera.json")?;
+
+    // Assets
     let assets = SerializedAssets::<f32> {
         bvh_config: Some(BvhConfig::default()),
         meshes: vec![
@@ -10,8 +20,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             ("tree".to_string(), "./assets/meshes/tree.obj".into()),
         ],
     };
-    assets.save("assets.json")?;
+    assets.save("./inputs/assets.json")?;
 
+    // Scene
     let objects = vec![
         SerializedSceneObject::Plane([0.0, 0.0, 0.0], [0.0, 0.0, 1.0]),
         SerializedSceneObject::Sphere([0.0, 0.0, 0.0], 1.0),
@@ -22,7 +33,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         SerializedSceneObject::Instance("tree".to_string(), None),
     ];
     let scene = SerializedScene { objects };
-    println!("{}", scene.to_str().unwrap());
-    scene.save("scene.json")?;
+    scene.save("./inputs/scene.json")?;
     Ok(())
 }

@@ -4,39 +4,33 @@ use nalgebra::{Point3, Unit};
 use ndarray::Array2;
 use ndarray_stats::QuantileExt;
 use photo::Image;
+use rayon::prelude::*;
 use std::error::Error;
+
+type Precision = f32;
 
 const COLOURS: [&str; 2] = ["#000000FF", "#FFFFFFFF"];
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let assets = SerializedAssets::<f32>::load("assets.json")?.build();
-    let scene = SerializedScene::<f32>::load("scene.json")?.build(&assets);
+    let assets = SerializedAssets::<Precision>::load("./inputs/assets.json")?.build();
+    let scene = SerializedScene::<Precision>::load("./inputs/scene.json")?.build(&assets);
+    let camera = SerializedCamera::load("./inputs/camera.json")?.build();
 
-    // Camera setup
-    let resolution = [600, 800]; // [height, width]
-    // let camera = Camera::new(
-    //     Point3::new(10.0, 10.0, 10.0), // position
-    //     Point3::new(0.0, 0.0, 3.0),    // look_at
-    //     90.0_f32.to_radians(),         // field_of_view
-    //     resolution,
-    // );
-    let camera = OrthoCamera::new(
-        Point3::new(0.0, 10.0, 10.0),
-        Point3::new(0.0, 0.0, 3.0),
-        20.0, // Much larger viewing area
-        resolution,
-    );
-
-    // Render
+    let resolution = camera.resolution();
     let sun = Point3::new(10.0, -5.0, 20.0);
-    let mut light = Array2::<f32>::zeros(resolution);
-    for row in 0..resolution[0] {
-        if row % 50 == 0 {
-            println!("Processing row {}/{}", row, resolution[0]);
-        }
-        for col in 0..resolution[1] {
+    let total_pixels = resolution[0] * resolution[1];
+
+    // Create a vector of all pixel coordinates
+    let pixel_coords: Vec<(usize, usize)> = (0..resolution[0])
+        .flat_map(|row| (0..resolution[1]).map(move |col| (row, col)))
+        .collect();
+
+    // Process pixels in parallel and collect results
+    let light_values: Vec<((usize, usize), Precision)> = pixel_coords
+        .into_par_iter()
+        .map(|(row, col)| {
             let ray = camera.generate_ray([row, col]);
-            if let Some((_hit_instance_index, hit)) = scene.intersect(&ray) {
+            let light_value = if let Some((_hit_instance_index, hit)) = scene.intersect(&ray) {
                 // Calculate light contribution
                 let ambient = 0.1;
                 let hit_position = ray.origin + ray.direction.scale(hit.distance - 0.01);
@@ -51,22 +45,35 @@ fn main() -> Result<(), Box<dyn Error>> {
                     1.0 // Not in shadow
                 };
 
-                light[[row, col]] = ambient + (diffuse * (1.0 - ambient) * shadow);
-            }
-        }
+                ambient + (diffuse * (1.0 - ambient) * shadow)
+            } else {
+                0.0 // No hit
+            };
+
+            ((row, col), light_value)
+        })
+        .collect();
+
+    // Reconstruct the array from parallel results
+    let mut light = Array2::<Precision>::zeros(*resolution);
+    for ((row, col), value) in light_values {
+        light[[row, col]] = value;
     }
 
-    // Create an image from the distance data
+    // Progress indication
+    println!("Processed all {} pixels", total_pixels);
+
+    // Create an image from the light data
     let cmap = ColourMap::new_uniform(&COLOURS.iter().map(|&c| LabAlpha::from_hex(c).unwrap()).collect::<Vec<_>>());
     let min_light = light.min().unwrap();
     let max_light = light.max().unwrap();
     let mut range = max_light - min_light;
     if range.is_nan() || range == 0.0 {
-        range = 1.0; // Avoid division by zero
+        range = 1.0;
     }
     println!("Min light: {}, Max light: {}", min_light, max_light);
     let img = light.mapv(|d| (d - min_light) / range).mapv(|d| cmap.sample(d));
-    img.save("./output/image.png")?;
+    // img.save("./output/image.png")?;
 
     Ok(())
 }

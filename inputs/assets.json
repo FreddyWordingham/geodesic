@@ -1,0 +1,14 @@
+{
+  "bvh_config": {
+    "traverse_cost": 1.0,
+    "intersect_cost": 1.25,
+    "sah_buckets": 16,
+    "max_shapes_per_node": 4,
+    "max_depth": 64
+  },
+  "meshes": [
+    ["circle", "./assets/meshes/circle.obj"],
+    ["cube", "./assets/meshes/cube.obj"],
+    ["tree", "./assets/meshes/tree.obj"]
+  ]
+}

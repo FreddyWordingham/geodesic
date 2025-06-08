@@ -1,0 +1,8 @@
+{
+  "camera_type": {
+    "Orthographic": 10.0
+  },
+  "position": [10.0, 10.0, 10.0],
+  "look_at": [0.0, 0.0, 3.0],
+  "resolution": [16000, 16000]
+}

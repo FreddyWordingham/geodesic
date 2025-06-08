@@ -3,16 +3,7 @@ use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, str::FromStr};
 
-use crate::{
-    assets::Assets,
-    bvh_config::BvhConfig,
-    mesh::Mesh,
-    plane::Plane,
-    prelude::{Instance, SceneObject},
-    scene::Scene,
-    sphere::Sphere,
-    triangle::Triangle,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerializedAssets<T: RealField + Copy + ToPrimitive> {
@@ -111,5 +102,34 @@ impl<T: RealField + Copy + ToPrimitive> SerializedScene<T> {
         // Ensure we have at least one object to create a valid scene
         assert!(!objects.is_empty(), "Scene must contain at least one object");
         Scene::new(&assets.bvh_config, objects)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SerializedCameraType<T: RealField + Copy> {
+    Perspective(T),
+    Orthographic(T),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SerializedCamera<T: RealField + Copy> {
+    pub camera_type: SerializedCameraType<T>, // Camera type with perspective, or orthographic size
+    pub position: [T; 3],                     // Camera position
+    pub look_at: [T; 3],                      // Point the camera is looking at
+    pub resolution: [usize; 2],               // [height, width]
+}
+
+impl<T: RealField + Copy + ToPrimitive> SerializedCamera<T> {
+    pub fn build(self) -> Camera<T> {
+        let position = Point3::new(self.position[0], self.position[1], self.position[2]);
+        let look_at = Point3::new(self.look_at[0], self.look_at[1], self.look_at[2]);
+        match self.camera_type {
+            SerializedCameraType::Perspective(fov) => {
+                Camera::new(position, look_at, CameraType::Perspective(fov), self.resolution)
+            }
+            SerializedCameraType::Orthographic(width) => {
+                Camera::new(position, look_at, CameraType::Orthographic(width), self.resolution)
+            }
+        }
     }
 }
