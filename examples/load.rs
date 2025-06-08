@@ -73,7 +73,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     println!("Min light: {}, Max light: {}", min_light, max_light);
     let img = light.mapv(|d| (d - min_light) / range).mapv(|d| cmap.sample(d));
-    // img.save("./output/image.png")?;
+    img.save("./output/image.png")?;
 
     Ok(())
 }
