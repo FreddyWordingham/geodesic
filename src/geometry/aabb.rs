@@ -82,6 +82,7 @@ impl<T: RealField + Copy> Aabb<T> {
     }
 
     /// Return a new `Aabb` which encapsulates this `Aabb` and another `Aabb`.
+    #[must_use]
     pub fn merge(&self, other: &Self) -> Self {
         let new_mins = Point3::new(
             self.mins.x.min(other.mins.x),
@@ -97,6 +98,7 @@ impl<T: RealField + Copy> Aabb<T> {
     }
 
     /// Apply a transformation to the `Aabb`.
+    #[must_use]
     pub fn transform(&self, transform: &Matrix4<T>) -> Self {
         // Instead of collecting all corners into a Vec, compute min/max on the fly
         let first_corner = Point3::new(self.mins.x, self.mins.y, self.mins.z);

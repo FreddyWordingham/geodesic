@@ -85,9 +85,8 @@ impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
         }
 
         // Find the best split using SAH
-        let best_split = match self.find_best_split(index, shapes) {
-            Some(split) => split,
-            None => return current_depth, // No valid split found
+        let Some(best_split) = self.find_best_split(index, shapes) else {
+            return current_depth;
         };
 
         // Calculate cost of not splitting (leaf node cost)
