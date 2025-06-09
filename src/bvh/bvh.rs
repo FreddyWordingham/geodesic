@@ -40,6 +40,11 @@ impl<T: RealField + Copy + ToPrimitive> Bvh<T> {
     }
 
     /// Construct a new `Bvh` instance directly.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `indices` or `nodes` are empty.
+    #[must_use]
     pub fn construct_directly(indices: Vec<usize>, nodes: Vec<BvhNode<T>>, depth: usize) -> Self {
         assert!(!indices.is_empty(), "BVH must contain at least one geometry");
         assert!(!nodes.is_empty(), "BVH must contain at least one node");
@@ -47,6 +52,7 @@ impl<T: RealField + Copy + ToPrimitive> Bvh<T> {
     }
 
     /// Get the depth of the `Bvh` tree.
+    #[must_use]
     pub const fn depth(&self) -> usize {
         self.depth
     }

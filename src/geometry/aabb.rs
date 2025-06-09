@@ -28,6 +28,11 @@ impl<T: RealField + Copy> Aabb<T> {
     }
 
     /// Create an 'empty' `Aabb` with extreme bounds.
+    ///
+    /// # Panics
+    ///
+    /// In practice this method will never panic.
+    #[must_use]
     pub fn empty() -> Self {
         let min_value = T::min_value().unwrap();
         let max_value = T::max_value().unwrap();
@@ -38,6 +43,10 @@ impl<T: RealField + Copy> Aabb<T> {
     }
 
     /// Calculate the center of the `Aabb`.
+    ///
+    /// # Panics
+    ///
+    /// In practice this method will never panic.
     pub fn centre(&self) -> Point3<T> {
         let two = T::from_u8(2).unwrap();
         Point3::new(
@@ -48,6 +57,10 @@ impl<T: RealField + Copy> Aabb<T> {
     }
 
     /// Calculate the surface area of an `Aabb`.
+    ///
+    /// # Panics
+    ///
+    /// In practice this method will never panic.
     pub fn surface_area(&self) -> T {
         let extent = [
             self.maxs[0] - self.mins[0],
@@ -123,6 +136,10 @@ impl<T: RealField + Copy> Aabb<T> {
     }
 
     /// Test for any intersection.
+    ///
+    /// # Panics
+    ///
+    /// In practice this method will never panic.
     pub fn intersect_any(&self, ray: &Ray<T>) -> bool {
         let mut t_min = T::zero();
         let mut t_max = T::max_value().unwrap();
@@ -168,6 +185,10 @@ impl<T: RealField + Copy> Aabb<T> {
     }
 
     /// Test for an intersection between a `Ray` and the `Aabb`.
+    ///
+    /// # Panics
+    ///
+    /// In practice this method will never panic.
     pub fn intersect_distance(&self, ray: &Ray<T>) -> Option<T> {
         let mut t_min = T::zero();
         let mut t_max = T::max_value().unwrap();

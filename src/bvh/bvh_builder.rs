@@ -227,8 +227,8 @@ impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
                 }
 
                 // Calculate SAH cost
-                let left_surface_area = left_aabb.as_ref().map_or_else(T::zero, |aabb| aabb.surface_area());
-                let right_surface_area = right_aabb.as_ref().map_or_else(T::zero, |aabb| aabb.surface_area());
+                let left_surface_area = left_aabb.as_ref().map_or_else(T::zero, Aabb::surface_area);
+                let right_surface_area = right_aabb.as_ref().map_or_else(T::zero, Aabb::surface_area);
 
                 let cost = self.config.traverse_cost
                     + (left_surface_area / node_surface_area) * T::from_usize(left_count).unwrap() * self.config.intersect_cost

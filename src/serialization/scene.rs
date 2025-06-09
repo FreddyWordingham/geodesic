@@ -16,6 +16,10 @@ pub struct SerializedScene<T: RealField + Copy> {
 
 impl<T: RealField + Copy + ToPrimitive> SerializedScene<T> {
     /// Construct a `Scene` instance.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `objects` vector is empty. A `Scene` must contain at least one object.
     pub fn build(self, assets: &Assets<T>) -> Scene<'_, T> {
         let objects: Vec<SceneObject<T>> = self.objects.into_iter().map(|obj| obj.build(assets)).collect();
         // Ensure we have at least one object to create a valid scene

@@ -36,11 +36,13 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
     }
 
     /// Get a reference to the `Triangle`s in this `Mesh`.
+    #[must_use]
     pub fn triangles(&self) -> &[Triangle<T>] {
         &self.triangles
     }
 
     /// Get a reference to the `Bvh` acceleration structure.
+    #[must_use]
     pub const fn bvh(&self) -> &Bvh<T> {
         &self.bvh
     }
@@ -57,17 +59,25 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
     }
 
     /// Load a `Mesh` from a wavefront (.obj) file.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the .obj file is malformed or does not conform to the expected format.
     pub fn load<P: AsRef<Path>>(bvh_config: &BvhConfig<T>, path: P) -> Self
     where
         T: FromStr,
     {
         let file_string =
             read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read .obj file at path: {}", path.as_ref().display()));
-        Self::from_str(bvh_config, &file_string)
+        Self::from_wavefront(bvh_config, &file_string)
     }
 
     /// Construct a `Mesh` from a wavefront (.obj) string.
-    pub fn from_str(bvh_config: &BvhConfig<T>, obj_string: &str) -> Self
+    ///
+    /// # Panics
+    ///
+    /// Panics if the wavefront data is malformed or does not conform to the expected format.
+    pub fn from_wavefront(bvh_config: &BvhConfig<T>, obj_string: &str) -> Self
     where
         T: FromStr,
     {

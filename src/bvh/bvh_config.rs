@@ -24,11 +24,18 @@ pub struct BvhConfig<T: RealField + Copy> {
 
 impl<T: RealField + Copy> BvhConfig<T> {
     /// Construct a new `BvhConfig` instance.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `traverse_cost` or `intersect_cost` is not positive,
+    /// if `sah_buckets` is not positive,
+    /// if `max_shapes_per_node` is not greater than two,
+    /// or if `max_depth` is not greater than zero.
     pub fn new(traverse_cost: T, intersect_cost: T, sah_buckets: usize, max_shapes_per_node: usize, max_depth: usize) -> Self {
         assert!(traverse_cost > T::zero(), "Traverse cost must be greater than zero.");
         assert!(intersect_cost > T::zero(), "Intersect cost must be greater than zero.");
         assert!(sah_buckets > 0, "Number of SAH buckets must be greater than zero.");
-        assert!(max_shapes_per_node > 3, "Maximum shapes per node must be greater than three.");
+        assert!(max_shapes_per_node > 2, "Maximum shapes per node must be greater than two.");
         assert!(max_depth > 0, "Maximum depth must be greater than zero.");
         Self {
             traverse_cost,

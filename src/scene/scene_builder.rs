@@ -20,12 +20,14 @@ pub struct SceneBuilder<'a, T: RealField + Copy + ToPrimitive> {
 
 impl<'a, T: RealField + Copy + ToPrimitive> SceneBuilder<'a, T> {
     /// Set the `Bvh` configuration for the scene
+    #[must_use]
     pub const fn with_bvh_config(mut self, config: BvhConfig<T>) -> Self {
         self.bvh_config = config;
         self
     }
 
     /// Add a `Sphere` object to the scene.
+    #[must_use]
     pub fn add_sphere(mut self, centre: Point3<T>, radius: T) -> Self {
         let sphere = Sphere::new(centre, radius);
         self.objects.push(SceneObject::Sphere(sphere));
@@ -33,6 +35,7 @@ impl<'a, T: RealField + Copy + ToPrimitive> SceneBuilder<'a, T> {
     }
 
     /// Add a `Triangle` object to the scene.
+    #[must_use]
     pub fn add_triangle(mut self, vertex_positions: [Point3<T>; 3], normals: [Unit<Vector3<T>>; 3]) -> Self {
         let triangle = Triangle::new(vertex_positions, normals);
         self.objects.push(SceneObject::Triangle(triangle));
@@ -40,6 +43,7 @@ impl<'a, T: RealField + Copy + ToPrimitive> SceneBuilder<'a, T> {
     }
 
     /// Add a `Instance` object to the scene.
+    #[must_use]
     pub fn add_instance(mut self, mesh: &'a Mesh<T>, transform: Matrix4<T>) -> Self {
         let instance = Instance::new(mesh, transform);
         self.objects.push(SceneObject::Instance(instance));
@@ -47,6 +51,10 @@ impl<'a, T: RealField + Copy + ToPrimitive> SceneBuilder<'a, T> {
     }
 
     /// Build the `Scene` with the current configuration and `SceneObjects`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `objects` vector is empty. A `Scene` must contain at least one object.
     pub fn build(self) -> Scene<'a, T> {
         assert!(!self.objects.is_empty(), "Scene must contain at least one object");
         Scene::new(&self.bvh_config, self.objects)

@@ -23,6 +23,10 @@ pub struct Scene<'a, T: RealField + Copy + ToPrimitive> {
 
 impl<'a, T: RealField + Copy + ToPrimitive> Scene<'a, T> {
     /// Construct a new `Scene` instance.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `objects` vector is empty. A `Scene` must contain at least one object.
     pub fn new(config: &BvhConfig<T>, objects: Vec<SceneObject<'a, T>>) -> Self {
         assert!(!objects.is_empty(), "Scene must contain at least one object");
         let bvh = Bvh::new(config, &objects);

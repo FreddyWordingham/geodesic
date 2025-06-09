@@ -25,11 +25,15 @@ impl<T: RealField + Copy + ToPrimitive> Assets<T> {
     }
 
     /// Add a `Mesh` to the `Assets`.
-    pub fn add_mesh(mut self, name: &str, mesh: Mesh<T>) -> Result<Self, String> {
-        if self.meshes.contains_key(name) {
-            return Err(format!("Mesh with name '{}' already exists", name));
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a `Mesh` with the same ID already exists in the `Assets`.
+    pub fn add_mesh(mut self, id: &str, mesh: Mesh<T>) -> Result<Self, String> {
+        if self.meshes.contains_key(id) {
+            return Err(format!("Mesh with ID '{id}' already exists"));
         }
-        let _prev_value = self.meshes.insert(name.into(), mesh);
+        let _prev_value = self.meshes.insert(id.into(), mesh);
         Ok(self)
     }
 }

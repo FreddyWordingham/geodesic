@@ -23,7 +23,11 @@ pub enum SerializedSceneObject<T: RealField + Copy> {
 
 impl<T: RealField + Copy + ToPrimitive> SerializedSceneObject<T> {
     /// Construct a `SceneObject` instance.
-    pub fn build<'a>(self, assets: &'a Assets<T>) -> SceneObject<'a, T> {
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `Mesh` identifier does not exist in the provided `Assets`.
+    pub fn build(self, assets: &Assets<T>) -> SceneObject<'_, T> {
         match self {
             Self::Sphere(center, radius) => SceneObject::Sphere(Sphere::new(center.into(), radius)),
             Self::Plane(point, normal) => {
@@ -37,7 +41,7 @@ impl<T: RealField + Copy + ToPrimitive> SerializedSceneObject<T> {
             )),
             Self::Instance(mesh_id, transform) => {
                 let mesh = assets.meshes.get(&mesh_id).unwrap();
-                let transform = transform.map(SerializedTransform::build).unwrap_or_else(Matrix4::identity);
+                let transform = transform.map_or_else(Matrix4::identity, SerializedTransform::build);
                 SceneObject::Instance(Instance::new(mesh, transform))
             }
         }

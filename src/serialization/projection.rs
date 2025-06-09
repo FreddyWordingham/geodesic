@@ -16,6 +16,10 @@ pub enum SerializedProjection<T: RealField + Copy> {
 
 impl<T: RealField + Copy> SerializedProjection<T> {
     /// Construct an `Projection` instance.
+    ///
+    /// # Panics
+    ///
+    /// In practice, this function will not panic.
     pub fn build(self) -> Projection<T> {
         match self {
             Self::Perspective(fov) => {

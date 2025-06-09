@@ -16,6 +16,10 @@ pub struct SerializedAssets<T: RealField + Copy + ToPrimitive> {
 
 impl<T: RealField + Copy + ToPrimitive + FromStr> SerializedAssets<T> {
     /// Construct an `Assets` instance.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any of the `Mesh` files cannot be loaded.
     pub fn build(self) -> Result<Assets<T>, String> {
         let bvh_config = self.bvh_config.unwrap_or_default();
         let mut assets = Assets::empty(bvh_config.clone());
