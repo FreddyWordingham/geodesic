@@ -4,9 +4,15 @@ use nalgebra::RealField;
 use num_traits::ToPrimitive;
 use std::borrow::Cow;
 
-use crate::prelude::*;
+use crate::{
+    geometry::{Aabb, Mesh, Plane, Sphere, Triangle},
+    rt::{Hit, Ray},
+    scene::Instance,
+    traits::{Bounded, Traceable},
+};
 
 /// Enumeration of all `Traceable` objects that can be added to a `Scene`.
+#[derive(Debug)]
 pub enum SceneObject<'a, T: RealField + Copy> {
     /// A sphere primitive.
     Sphere(Sphere<T>),
@@ -20,7 +26,7 @@ pub enum SceneObject<'a, T: RealField + Copy> {
     Instance(Instance<'a, T>),
 }
 
-impl<'a, T: RealField + Copy + ToPrimitive> Bounded<T> for SceneObject<'a, T> {
+impl<T: RealField + Copy + ToPrimitive> Bounded<T> for SceneObject<'_, T> {
     fn aabb(&self) -> Cow<Aabb<T>> {
         match self {
             SceneObject::Sphere(sphere) => sphere.aabb(),
@@ -32,7 +38,7 @@ impl<'a, T: RealField + Copy + ToPrimitive> Bounded<T> for SceneObject<'a, T> {
     }
 }
 
-impl<'a, T: RealField + Copy + ToPrimitive> Traceable<T> for SceneObject<'a, T> {
+impl<T: RealField + Copy + ToPrimitive> Traceable<T> for SceneObject<'_, T> {
     fn intersect(&self, ray: &Ray<T>) -> Option<Hit<T>> {
         match self {
             SceneObject::Sphere(sphere) => sphere.intersect(ray),

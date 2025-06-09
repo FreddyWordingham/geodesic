@@ -1,5 +1,11 @@
-pub mod aabb;
-pub mod mesh;
-pub mod plane;
-pub mod sphere;
-pub mod triangle;
+mod aabb;
+mod mesh;
+mod plane;
+mod sphere;
+mod triangle;
+
+pub use aabb::Aabb;
+pub use mesh::Mesh;
+pub use plane::Plane;
+pub use sphere::Sphere;
+pub use triangle::Triangle;

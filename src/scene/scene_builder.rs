@@ -3,25 +3,24 @@
 use nalgebra::{Matrix4, Point3, RealField, Unit, Vector3};
 use num_traits::ToPrimitive;
 
-use crate::prelude::*;
+use crate::{
+    bvh::BvhConfig,
+    geometry::{Mesh, Sphere, Triangle},
+    scene::{Instance, Scene, SceneObject},
+};
 
 /// Builder for constructing `Scene` instances.
+#[derive(Debug)]
 pub struct SceneBuilder<'a, T: RealField + Copy + ToPrimitive> {
+    /// List of objects in the scene.
     objects: Vec<SceneObject<'a, T>>,
+    /// Configuration for the `Bvh` acceleration structure.
     bvh_config: BvhConfig<T>,
 }
 
 impl<'a, T: RealField + Copy + ToPrimitive> SceneBuilder<'a, T> {
-    /// Construct a new `SceneBuilder` instance.
-    pub fn new() -> Self {
-        Self {
-            objects: Vec::new(),
-            bvh_config: BvhConfig::default(),
-        }
-    }
-
     /// Set the `Bvh` configuration for the scene
-    pub fn with_bvh_config(mut self, config: BvhConfig<T>) -> Self {
+    pub const fn with_bvh_config(mut self, config: BvhConfig<T>) -> Self {
         self.bvh_config = config;
         self
     }
@@ -51,5 +50,14 @@ impl<'a, T: RealField + Copy + ToPrimitive> SceneBuilder<'a, T> {
     pub fn build(self) -> Scene<'a, T> {
         assert!(!self.objects.is_empty(), "Scene must contain at least one object");
         Scene::new(&self.bvh_config, self.objects)
+    }
+}
+
+impl<T: RealField + Copy + ToPrimitive> Default for SceneBuilder<'_, T> {
+    fn default() -> Self {
+        Self {
+            objects: Vec::new(),
+            bvh_config: BvhConfig::default(),
+        }
     }
 }

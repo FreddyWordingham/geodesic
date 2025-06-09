@@ -3,9 +3,14 @@
 use nalgebra::{Matrix3, Matrix4, RealField, Unit};
 use num_traits::ToPrimitive;
 
-use crate::prelude::*;
+use crate::{
+    geometry::{Aabb, Mesh},
+    rt::{Hit, Ray},
+    traits::Bounded,
+};
 
-/// Triangle mesh instance.
+/// `Mesh` instance allowing for transformations without copying the original data.
+#[derive(Debug)]
 pub struct Instance<'a, T: RealField + Copy> {
     /// Reference to `Mesh` data.
     mesh: &'a Mesh<T>,
@@ -40,12 +45,12 @@ impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
     }
 
     /// Get a reference to the underlying `Mesh`.
-    pub fn mesh(&self) -> &Mesh<T> {
+    pub const fn mesh(&self) -> &Mesh<T> {
         self.mesh
     }
 
     /// Get the world-space `Aabb`.
-    pub fn world_aabb(&self) -> &Aabb<T> {
+    pub const fn world_aabb(&self) -> &Aabb<T> {
         &self.world_aabb
     }
 
@@ -64,22 +69,20 @@ impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
         Some((triangle_index, hit))
     }
 
-    /// Test if ray intersects any triangle in the instance (shadow ray optimization).
+    /// Test if `Ray` intersects any `Triangle` in the instance (shadow ray optimization).
     pub fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> bool {
         // Transform ray to object space
-        if let Some(object_ray) = self.transform_ray_to_object_space(ray) {
+        self.transform_ray_to_object_space(ray).is_some_and(|object_ray| {
             // Transform max_distance from world space to object space
             // We need to account for how the transformation affects distances along the ray
             let world_endpoint = ray.origin + ray.direction.scale(max_distance);
             let object_endpoint = self.world_to_object.transform_point(&world_endpoint);
             let object_max_distance = (object_endpoint - object_ray.origin).norm();
             self.mesh.intersect_any(&object_ray, object_max_distance)
-        } else {
-            false
-        }
+        })
     }
 
-    /// Transform a ray from world space to object space.
+    /// Transform a `Ray` from world space to object space.
     fn transform_ray_to_object_space(&self, ray: &Ray<T>) -> Option<Ray<T>> {
         // Transform origin using the built-in transform_point method
         let object_origin = self.world_to_object.transform_point(&ray.origin);
@@ -93,7 +96,7 @@ impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
         Some(Ray::new(object_origin, object_direction))
     }
 
-    /// Transform a hit from object space to world space.
+    /// Transform a `Hit` from object space to world space.
     fn transform_hit_to_world_space(&self, hit: &mut Hit<T>, world_ray: &Ray<T>, object_ray: &Ray<T>) {
         // Transform geometric normal
         let world_geometric_normal_vector = self.normal_transform * hit.geometric_normal.as_ref();
@@ -103,8 +106,7 @@ impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
         let world_interpolated_normal_vector = self.normal_transform * hit.interpolated_normal.as_ref();
         hit.interpolated_normal = Unit::new_normalize(world_interpolated_normal_vector);
 
-        // CRITICAL FIX: Transform the distance from object space to world space
-        // The hit distance is along the object-space ray, but we need it along the world-space ray
+        // Transform the distance from object space to world space. The hit distance is along the object-space ray, but we need it along the world-space ray
         // Calculate the actual world-space intersection point
         let object_hit_point = object_ray.origin + object_ray.direction.scale(hit.distance);
         let world_hit_point = self.object_to_world.transform_point(&object_hit_point);

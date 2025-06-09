@@ -3,8 +3,13 @@
 use nalgebra::{Point3, RealField, Unit, Vector3};
 use std::borrow::Cow;
 
-use crate::prelude::*;
+use crate::{
+    geometry::Aabb,
+    rt::{Hit, Ray},
+    traits::{Bounded, Traceable},
+};
 
+/// Sphere structure defined by a center point and a radius.
 #[derive(Debug, Clone)]
 pub struct Sphere<T: RealField + Copy> {
     /// Center of the sphere.
@@ -33,7 +38,7 @@ impl<T: RealField + Copy> Traceable<T> for Sphere<T> {
         let epsilon = T::default_epsilon();
 
         // Vector from ray origin to sphere center
-        let oc = &ray.origin - &self.center;
+        let oc = ray.origin - self.center;
 
         // Quadratic equation coefficients: at^2 + bt + c = 0
         let a = ray.direction.dot(&ray.direction);

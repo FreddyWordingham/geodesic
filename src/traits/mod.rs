@@ -1,3 +1,7 @@
-pub mod bounded;
-pub mod persistable;
-pub mod traceable;
+mod bounded;
+mod persistable;
+mod traceable;
+
+pub use bounded::Bounded;
+pub use persistable::Persistable;
+pub use traceable::Traceable;

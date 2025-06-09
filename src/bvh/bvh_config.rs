@@ -3,12 +3,11 @@
 use nalgebra::RealField;
 use serde::{Deserialize, Serialize};
 
-const DEFAULT_TRAVERSE_COST: f64 = 1.0;
-const DEFAULT_INTERSECT_COST: f64 = 1.25;
-const DEFAULT_SAH_BUCKETS: usize = 16;
-const DEFAULT_MAX_SHAPES_PER_NODE: usize = 4;
-const DEFAULT_MAX_DEPTH: usize = 64;
+use crate::config::{
+    DEFAULT_INTERSECT_COST, DEFAULT_MAX_DEPTH, DEFAULT_MAX_SHAPES_PER_NODE, DEFAULT_SAH_BUCKETS, DEFAULT_TRAVERSE_COST,
+};
 
+/// Configuration structure for constructing a Bounding Volume Hierarchy (BVH).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BvhConfig<T: RealField + Copy> {
     /// Cost of intersecting a primitive.

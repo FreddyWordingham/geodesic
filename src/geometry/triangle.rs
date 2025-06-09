@@ -1,9 +1,14 @@
 use nalgebra::{Point3, RealField, Unit, Vector3};
 use std::borrow::Cow;
 
-use crate::prelude::*;
+use crate::{
+    geometry::Aabb,
+    rt::{Hit, Ray},
+    traits::{Bounded, Traceable},
+};
 
-/// Three-dimensional triangle with pre-computed edges and normals for fast ray intersection.
+/// `Triangle` geometry embedded in 3D space.
+#[derive(Debug)]
 pub struct Triangle<T: RealField + Copy> {
     /// First vertex position (vertex 0).
     vertex0: Point3<T>,
@@ -20,8 +25,8 @@ pub struct Triangle<T: RealField + Copy> {
 impl<T: RealField + Copy> Triangle<T> {
     /// Construct a new `Triangle` instance.
     pub fn new(vertices: [Point3<T>; 3], normals: [Unit<Vector3<T>>; 3]) -> Self {
-        let edge1 = &vertices[1] - &vertices[0];
-        let edge2 = &vertices[2] - &vertices[0];
+        let edge1 = vertices[1] - vertices[0];
+        let edge2 = vertices[2] - vertices[0];
         let geometric_normal = Unit::new_normalize(edge1.cross(&edge2));
 
         Self {
@@ -88,7 +93,7 @@ impl<T: RealField + Copy> Traceable<T> for Triangle<T> {
         }
 
         let inv_a = T::one() / a;
-        let s = &ray.origin - &self.vertex0;
+        let s = ray.origin - self.vertex0;
         let u = inv_a * s.dot(&h);
 
         // Early exits for barycentric coordinates

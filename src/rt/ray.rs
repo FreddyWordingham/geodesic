@@ -2,6 +2,7 @@
 
 use nalgebra::{Point3, RealField, Unit, Vector3};
 
+/// Geometric ray structure defined by an origin point and a direction vector.
 #[derive(Debug, Clone)]
 pub struct Ray<T: RealField + Copy> {
     /// Starting location.

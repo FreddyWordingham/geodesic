@@ -1,52 +1,49 @@
 use nalgebra::{Point3, RealField, Rotation3, Unit, Vector3};
 
-use crate::prelude::*;
+use crate::{rt::Ray, scene::Projection};
 
-#[derive(Clone)]
-pub enum CameraType<T: RealField + Copy> {
-    Perspective(T),
-    Orthographic(T),
-}
-
-/// Generates sampling rays to form an image.
-#[derive(Clone)]
+/// Generates sampling `Ray`.
+#[derive(Debug, Clone)]
 pub struct Camera<T: RealField + Copy> {
     /// Observation position.
     position: Point3<T>,
     /// View target.
     look_at: Point3<T>,
-    /// Camera type
-    camera_type: CameraType<T>,
+    /// Camera projection mode
+    projection: Projection<T>,
     /// Resolution of the image in pixels.
     resolution: [usize; 2],
 }
 
 impl<T: RealField + Copy> Camera<T> {
     /// Constructs a new `Camera`.
-    pub fn new(position: Point3<T>, look_at: Point3<T>, camera_type: CameraType<T>, resolution: [usize; 2]) -> Self {
+    pub fn new(position: Point3<T>, look_at: Point3<T>, projection: Projection<T>, resolution: [usize; 2]) -> Self {
         debug_assert!(resolution[0] > 0, "Resolution height must be positive");
         debug_assert!(resolution[1] > 0, "Resolution width must be positive");
 
         Self {
             position,
             look_at,
-            camera_type,
+            projection,
             resolution,
         }
     }
 
-    /// Returns the resolution of the camera.
-    pub fn resolution(&self) -> &[usize; 2] {
+    /// Returns the resolution of the `Camera`.
+    pub const fn resolution(&self) -> &[usize; 2] {
         &self.resolution
     }
 
+    /// Generate a `Ray` for the given pixel index.
+    /// A position of [0, 0] corresponds to the top-left pixel of the image.
     pub fn generate_ray(&self, pixel_index: [usize; 2]) -> Ray<T> {
-        match self.camera_type {
-            CameraType::Perspective(fov) => self.generate_perspective_ray(pixel_index, fov),
-            CameraType::Orthographic(width) => self.generate_ortho_ray(pixel_index, width),
+        match self.projection {
+            Projection::Perspective(fov) => self.generate_perspective_ray(pixel_index, fov),
+            Projection::Orthographic(width) => self.generate_ortho_ray(pixel_index, width),
         }
     }
 
+    /// Generate a `Ray` using a perspective projection.
     fn generate_perspective_ray(&self, pixel_index: [usize; 2], fov: T) -> Ray<T> {
         debug_assert!(pixel_index[0] < self.resolution[0], "Row index out of bounds");
         debug_assert!(pixel_index[1] < self.resolution[1], "Column index out of bounds");
@@ -55,16 +52,16 @@ impl<T: RealField + Copy> Camera<T> {
         let width = T::from_usize(self.resolution[1]).unwrap();
 
         // Normalize to [-0.5, 0.5] range
-        let d_row = (T::from_usize(pixel_index[0]).unwrap() / height.clone()) - T::from_f32(0.5).unwrap();
-        let d_col = (T::from_usize(pixel_index[1]).unwrap() / width.clone()) - T::from_f32(0.5).unwrap();
+        let d_row = (T::from_usize(pixel_index[0]).unwrap() / height) - T::from_f32(0.5).unwrap();
+        let d_col = (T::from_usize(pixel_index[1]).unwrap() / width) - T::from_f32(0.5).unwrap();
 
         let aspect_ratio = width / height;
         let half_fov = fov * T::from_f32(0.5).unwrap();
 
-        let d_theta = -d_col * half_fov.clone();
+        let d_theta = -d_col * half_fov;
         let d_phi = -d_row * (half_fov / aspect_ratio);
 
-        let forward = Unit::new_normalize(&self.look_at - &self.position);
+        let forward = Unit::new_normalize(self.look_at - self.position);
         let right = Unit::new_normalize(forward.cross(&Vector3::z()));
         let up = Unit::new_normalize(right.cross(&forward));
 
@@ -72,9 +69,10 @@ impl<T: RealField + Copy> Camera<T> {
         let lateral_rotation = Rotation3::from_axis_angle(&up, d_theta);
 
         let direction = lateral_rotation * vertical_rotation * forward;
-        Ray::new(self.position.clone(), direction)
+        Ray::new(self.position, direction)
     }
 
+    /// Generate a `Ray` using an orthographic projection.
     fn generate_ortho_ray(&self, pixel_index: [usize; 2], width: T) -> Ray<T> {
         debug_assert!(pixel_index[0] < self.resolution[0], "Row index out of bounds");
         debug_assert!(pixel_index[1] < self.resolution[1], "Column index out of bounds");
@@ -92,7 +90,7 @@ impl<T: RealField + Copy> Camera<T> {
         let view_height = -view_width / aspect_ratio;
 
         // Set up coordinate system
-        let forward = Unit::new_normalize(&self.look_at - &self.position);
+        let forward = Unit::new_normalize(self.look_at - self.position);
         let right = Unit::new_normalize(forward.cross(&Vector3::z()));
         let up = Unit::new_normalize(right.cross(&forward));
 

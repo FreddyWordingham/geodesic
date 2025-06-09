@@ -4,10 +4,15 @@ use nalgebra::RealField;
 use num_traits::ToPrimitive;
 use std::borrow::Cow;
 
-use crate::prelude::*;
+use crate::{
+    bvh::{BvhBuilder, BvhConfig},
+    geometry::Aabb,
+    rt::{Hit, Ray},
+    traits::{Bounded, Traceable},
+};
 
 /// Bounding volume hierarchy node.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BvhNode<T: RealField + Copy> {
     /// Bounding box.
     pub aabb: Aabb<T>,
@@ -17,6 +22,8 @@ pub struct BvhNode<T: RealField + Copy> {
     pub count: usize,
 }
 
+/// Bounding Volume Hierarchy (BVH) structure used to accelerate ray tracing by reducing the number of intersection tests required.
+#[derive(Debug)]
 pub struct Bvh<T: RealField + Copy> {
     /// Indices of objects contained in this node.
     indices: Vec<usize>,
@@ -27,7 +34,7 @@ pub struct Bvh<T: RealField + Copy> {
 }
 
 impl<T: RealField + Copy + ToPrimitive> Bvh<T> {
-    /// Construct a new `Bvh` instance using a builder and a collection of bounded shapes.
+    /// Construct a new `Bvh` instance using a builder and a collection of `Bounded` shapes.
     pub fn new<B: Bounded<T>>(config: &BvhConfig<T>, shapes: &[B]) -> Self {
         BvhBuilder::new(config).build(shapes)
     }
@@ -39,12 +46,12 @@ impl<T: RealField + Copy + ToPrimitive> Bvh<T> {
         Self { indices, nodes, depth }
     }
 
-    /// Get the depth of the BVH tree.
-    pub fn depth(&self) -> usize {
+    /// Get the depth of the `Bvh` tree.
+    pub const fn depth(&self) -> usize {
         self.depth
     }
 
-    /// Test for intersections between a `Ray` and objects in the BVH.
+    /// Test for intersections between a `Ray` and geometries in the `Bvh`.
     /// Returns the closest intersection if any.
     pub fn intersect<B>(&self, ray: &Ray<T>, shapes: &[B]) -> Option<(usize, Hit<T>)>
     where
@@ -53,7 +60,7 @@ impl<T: RealField + Copy + ToPrimitive> Bvh<T> {
         self.intersect_recursive(ray, shapes, 0)
     }
 
-    /// Test if ray intersects any object in the BVH (shadow ray optimization).
+    /// Test if a `Ray` intersects any geometry in the `Bvh` (shadow ray optimization).
     pub fn intersect_any<B>(&self, ray: &Ray<T>, shapes: &[B], max_distance: T) -> bool
     where
         B: Bounded<T> + Traceable<T>,
@@ -61,7 +68,7 @@ impl<T: RealField + Copy + ToPrimitive> Bvh<T> {
         self.intersect_any_recursive(ray, shapes, 0, max_distance)
     }
 
-    /// Recursive helper for BVH traversal.
+    /// Recursive helper for `Bvh` traversal.
     fn intersect_recursive<B>(&self, ray: &Ray<T>, shapes: &[B], node_index: usize) -> Option<(usize, Hit<T>)>
     where
         B: Bounded<T> + Traceable<T>,
@@ -73,7 +80,7 @@ impl<T: RealField + Copy + ToPrimitive> Bvh<T> {
         let node = &self.nodes[node_index];
 
         // Test ray against node's bounding box
-        if node.aabb.intersect_distance(ray).is_none() {
+        if !node.aabb.intersect_any(ray) {
             return None;
         }
 

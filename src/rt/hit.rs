@@ -1,6 +1,7 @@
 use nalgebra::{RealField, Unit, Vector3};
 
-#[derive(Clone)]
+/// Records details of a ray intersection with a geometric surface.
+#[derive(Debug, Clone)]
 pub struct Hit<T: RealField + Copy> {
     /// The distance to intersection.
     pub distance: T,

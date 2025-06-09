@@ -4,10 +4,10 @@ use std::error::Error;
 fn main() -> Result<(), Box<dyn Error>> {
     // Camera
     let camera = SerializedCamera {
-        camera_type: SerializedCameraType::Perspective(90.0_f32.to_radians()), // field_of_view
-        position: [10.0, 10.0, 10.0],                                          // position
-        look_at: [0.0, 0.0, 3.0],                                              // look_at
-        resolution: [600, 800],                                                // [height, width]
+        projection: SerializedProjection::Perspective(90.0_f32.to_radians()), // camera projection mode
+        position: [10.0, 10.0, 10.0],                                         // view point
+        look_at: [0.0, 0.0, 3.0],                                             // target point
+        resolution: [600, 800],                                               // [height, width]
     };
     camera.save("./inputs/camera.json")?;
 

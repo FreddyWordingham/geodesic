@@ -12,7 +12,7 @@ type Precision = f32;
 const COLOURS: [&str; 2] = ["#000000FF", "#FFFFFFFF"];
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let assets = SerializedAssets::<Precision>::load("./inputs/assets.json")?.build();
+    let assets = SerializedAssets::<Precision>::load("./inputs/assets.json")?.build()?;
     let scene = SerializedScene::<Precision>::load("./inputs/scene.json")?.build(&assets);
     let camera = SerializedCamera::load("./inputs/camera.json")?.build();
 

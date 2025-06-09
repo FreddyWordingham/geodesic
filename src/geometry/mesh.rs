@@ -4,19 +4,27 @@ use nalgebra::{Point3, RealField, Unit, Vector3};
 use num_traits::ToPrimitive;
 use std::{borrow::Cow, fs::read_to_string, path::Path, str::FromStr};
 
-use crate::prelude::*;
+use crate::{
+    bvh::{Bvh, BvhConfig},
+    geometry::{Aabb, Triangle},
+    rt::{Hit, Ray},
+    traits::Bounded,
+};
 
-/// Triangular face indices.
+/// Internal transient structure used to represent a `Triangle` in the `Mesh` using vertex and normal indices.
 struct Face {
+    /// Indices of the vertex positions.
     vertex_indices: [usize; 3],
+    /// Indices of the vertex normals.
     normal_indices: [usize; 3],
 }
 
-/// Triangle mesh.
+/// Surface composed of `Triangle`s.
+#[derive(Debug)]
 pub struct Mesh<T: RealField + Copy> {
     /// Component `Triangle` instances.
     triangles: Vec<Triangle<T>>,
-    /// BVH acceleration structure.
+    /// `Bvh` acceleration structure.
     bvh: Bvh<T>,
 }
 
@@ -33,7 +41,7 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
     }
 
     /// Get a reference to the `Bvh` acceleration structure.
-    pub fn bvh(&self) -> &Bvh<T> {
+    pub const fn bvh(&self) -> &Bvh<T> {
         &self.bvh
     }
 
@@ -43,13 +51,13 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
         self.bvh.intersect(ray, &self.triangles)
     }
 
-    /// Test if ray intersects any `Triangle` in the `Mesh` (shadow ray optimization).
+    /// Test if `Ray` intersects any `Triangle` in the `Mesh` (shadow ray optimization).
     pub fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> bool {
         self.bvh.intersect_any(ray, &self.triangles, max_distance)
     }
 
     /// Load a `Mesh` from a wavefront (.obj) file.
-    pub fn load<P: AsRef<Path>>(bvh_config: &BvhConfig<T>, path: P) -> Mesh<T>
+    pub fn load<P: AsRef<Path>>(bvh_config: &BvhConfig<T>, path: P) -> Self
     where
         T: FromStr,
     {
@@ -59,7 +67,7 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
     }
 
     /// Construct a `Mesh` from a wavefront (.obj) string.
-    pub fn from_str(bvh_config: &BvhConfig<T>, obj_string: &str) -> Mesh<T>
+    pub fn from_str(bvh_config: &BvhConfig<T>, obj_string: &str) -> Self
     where
         T: FromStr,
     {
@@ -186,7 +194,7 @@ fn parse_face(tokens: &[&str]) -> Face {
             - 1;
         normal_indices[i] = token
             .split('/')
-            .last()
+            .next_back()
             .expect("Face must specify a vertex normal index")
             .parse::<usize>()
             .expect("Invalid face vertex normal index")

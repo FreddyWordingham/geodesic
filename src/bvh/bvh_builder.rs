@@ -3,15 +3,24 @@
 use nalgebra::RealField;
 use num_traits::ToPrimitive;
 
-use crate::prelude::*;
+use crate::{
+    bvh::{Bvh, BvhConfig, BvhNode},
+    geometry::Aabb,
+    traits::Bounded,
+};
 
-/// Split candidate for surface area heuristic (SAH) evaluation.
+/// Internal transient structure used for surface area heuristic (SAH) evaluation.
 struct SplitCandidate<T: RealField + Copy> {
+    /// Axis along which the split is evaluated. 0 = x-axis, 1 = y-axis, 2 = z-axis.
     axis: usize,
+    /// Position along the axis where the split occurs.
     position: T,
+    /// Cost of the split, calculated using SAH.
     cost: T,
 }
 
+/// Transient structure used in building a Bounding Volume Hierarchy (BVH).
+#[derive(Debug)]
 pub struct BvhBuilder<T: RealField + Copy> {
     /// Configuration parameters for the BVH.
     config: BvhConfig<T>,
@@ -34,7 +43,7 @@ impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
         }
     }
 
-    /// Generate a `Bvh` from a collection of bounded shapes.
+    /// Construct a `Bvh` from a collection of `Bounded` shapes.
     pub fn build<B: Bounded<T>>(mut self, shapes: &[B]) -> Bvh<T> {
         debug_assert!(!shapes.is_empty(), "BVH must contain at least one geometry");
 
@@ -68,7 +77,7 @@ impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
             .fold(self.nodes[index].aabb.clone(), |acc, aabb| acc.merge(&aabb));
     }
 
-    /// Subdivide a `BvhNode` using Surface Area Heuristic.
+    /// Subdivide a `BvhNode` using Surface Area Heuristic (SAH).
     fn subdivide<B: Bounded<T>>(&mut self, index: usize, shapes: &[B], current_depth: usize) -> usize {
         // Termination criteria
         if (self.nodes[index].count <= self.config.max_shapes_per_node) || (current_depth >= self.config.max_depth) {
@@ -140,7 +149,7 @@ impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
         left_depth.max(right_depth)
     }
 
-    /// Find the best split using Surface Area Heuristic.
+    /// Find the best split using Surface Area Heuristic (SAH).
     fn find_best_split<B: Bounded<T>>(&self, node_index: usize, shapes: &[B]) -> Option<SplitCandidate<T>> {
         let node = &self.nodes[node_index];
         let node_surface_area = node.aabb.surface_area();
@@ -159,7 +168,7 @@ impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
             }
 
             // Create buckets for this axis
-            let mut buckets = vec![(0usize, Aabb::empty()); self.config.sah_buckets];
+            let mut buckets = vec![(0, Aabb::empty()); self.config.sah_buckets];
 
             // Assign primitives to buckets
             for i in 0..node.count {
@@ -190,10 +199,11 @@ impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
                 for bucket in &buckets[..split_bucket] {
                     if bucket.0 > 0 {
                         left_count += bucket.0;
-                        left_aabb = Some(match left_aabb {
-                            None => bucket.1.clone(),
-                            Some(ref aabb) => aabb.merge(&bucket.1),
-                        });
+                        left_aabb = Some(
+                            left_aabb
+                                .as_ref()
+                                .map_or_else(|| bucket.1.clone(), |aabb| aabb.merge(&bucket.1)),
+                        );
                     }
                 }
 
@@ -203,10 +213,11 @@ impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
                 for bucket in &buckets[split_bucket..] {
                     if bucket.0 > 0 {
                         right_count += bucket.0;
-                        right_aabb = Some(match right_aabb {
-                            None => bucket.1.clone(),
-                            Some(ref aabb) => aabb.merge(&bucket.1),
-                        });
+                        right_aabb = Some(
+                            right_aabb
+                                .as_ref()
+                                .map_or_else(|| bucket.1.clone(), |aabb| aabb.merge(&bucket.1)),
+                        );
                     }
                 }
 
@@ -216,8 +227,8 @@ impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
                 }
 
                 // Calculate SAH cost
-                let left_surface_area = left_aabb.as_ref().map_or(T::zero(), |aabb| aabb.surface_area());
-                let right_surface_area = right_aabb.as_ref().map_or(T::zero(), |aabb| aabb.surface_area());
+                let left_surface_area = left_aabb.as_ref().map_or_else(T::zero, |aabb| aabb.surface_area());
+                let right_surface_area = right_aabb.as_ref().map_or_else(T::zero, |aabb| aabb.surface_area());
 
                 let cost = self.config.traverse_cost
                     + (left_surface_area / node_surface_area) * T::from_usize(left_count).unwrap() * self.config.intersect_cost
@@ -228,7 +239,7 @@ impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
                 let split_position = node.aabb.mins[axis]
                     + extent * T::from_usize(split_bucket).unwrap() / T::from_usize(self.config.sah_buckets).unwrap();
 
-                if best_split.as_ref().map_or(true, |best| cost < best.cost) {
+                if best_split.as_ref().is_none_or(|best| cost < best.cost) {
                     best_split = Some(SplitCandidate {
                         axis,
                         position: split_position,
