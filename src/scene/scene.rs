@@ -30,6 +30,7 @@ impl<'a, T: RealField + Copy + ToPrimitive> Scene<'a, T> {
     }
 
     /// Return a builder for constructing a `Scene`.
+    #[must_use]
     pub fn builder() -> SceneBuilder<'a, T> {
         SceneBuilder::default()
     }
