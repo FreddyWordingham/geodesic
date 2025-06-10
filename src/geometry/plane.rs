@@ -90,6 +90,6 @@ impl<T: RealField + Copy> Traceable<T> for Plane<T> {
             Unit::new_unchecked(-self.normal.as_ref())
         };
 
-        Ok(Some(Hit::new(t, normal, normal)?))
+        Ok(Some(Hit::new(0, t, normal, normal)?))
     }
 }

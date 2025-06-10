@@ -1,12 +1,12 @@
 //! Axis-aligned bounding box structure.
 
-use nalgebra::{Matrix4, Point3, RealField, Unit, Vector3};
+use nalgebra::{Matrix4, Point3, RealField};
 use std::borrow::Cow;
 
 use crate::{
     error::{GeometryError, Result},
-    rt::{Hit, Ray},
-    traits::{Bounded, FallibleNumeric, Traceable},
+    rt::Ray,
+    traits::{Bounded, FallibleNumeric},
 };
 
 /// Axis-aligned bounding box.
@@ -243,96 +243,5 @@ impl<T: RealField + Copy> Aabb<T> {
 impl<T: RealField + Copy> Bounded<T> for Aabb<T> {
     fn aabb(&self) -> Result<Cow<Self>> {
         Ok(Cow::Borrowed(self))
-    }
-}
-
-impl<T: RealField + Copy> Traceable<T> for Aabb<T> {
-    fn intersect(&self, ray: &Ray<T>) -> Result<Option<Hit<T>>> {
-        let mut t_min = T::zero();
-        let mut t_max = T::try_max_value()?;
-        let mut normal_axis = 0;
-        let mut normal_sign = T::one();
-
-        // Use pre-computed inverse directions from Ray struct
-        for i in 0..3 {
-            let ray_origin_i = ray.origin[i];
-            let inv_dir_i = ray.inv_direction[i];
-            let box_min_i = self.mins[i];
-            let box_max_i = self.maxs[i];
-
-            // Check for parallel ray (inv_direction will be inf/-inf)
-            if !inv_dir_i.is_finite() {
-                if ray_origin_i < box_min_i || ray_origin_i > box_max_i {
-                    return Ok(None);
-                }
-                continue;
-            }
-
-            // Use pre-computed inverse direction
-            let t0 = (box_min_i - ray_origin_i) * inv_dir_i;
-            let t1 = (box_max_i - ray_origin_i) * inv_dir_i;
-
-            // Use ray.sign for branchless min/max
-            let t_near = if ray.sign[i] == 0 { t0 } else { t1 };
-            let t_far = if ray.sign[i] == 0 { t1 } else { t0 };
-
-            // Track which face we're entering through
-            if t_near > t_min {
-                t_min = t_near;
-                normal_axis = i;
-                // Normal points opposite to ray direction
-                normal_sign = if ray.sign[i] == 0 { -T::one() } else { T::one() };
-            }
-
-            t_max = t_max.min(t_far);
-
-            // Early exit if no intersection
-            if t_min > t_max {
-                return Ok(None);
-            }
-        }
-
-        // No intersection if the box is behind the ray
-        if t_max < T::zero() {
-            return Ok(None);
-        }
-
-        // Choose the appropriate intersection distance
-        let distance = if t_min >= T::zero() { t_min } else { t_max };
-
-        // If we're using t_max (ray starts inside the box), we need to recalculate the normal
-        if t_min < T::zero() {
-            // Ray starts inside the box, we're hitting the exit face
-            // Recalculate which face we're exiting through
-            for i in 0..3 {
-                let ray_origin_i = ray.origin[i];
-                let inv_dir_i = ray.inv_direction[i];
-                let box_min_i = self.mins[i];
-                let box_max_i = self.maxs[i];
-
-                if !inv_dir_i.is_finite() {
-                    continue;
-                }
-
-                let t0 = (box_min_i - ray_origin_i) * inv_dir_i;
-                let t1 = (box_max_i - ray_origin_i) * inv_dir_i;
-
-                let t_far = if ray.sign[i] == 0 { t1 } else { t0 };
-
-                if (t_far - t_max).abs() < T::default_epsilon() {
-                    normal_axis = i;
-                    // Normal points inward (toward the box interior) when exiting
-                    normal_sign = if ray.sign[i] == 0 { T::one() } else { -T::one() };
-                    break;
-                }
-            }
-        }
-
-        // Construct the normal vector
-        let mut normal_vec = Vector3::zeros();
-        normal_vec[normal_axis] = normal_sign;
-        let normal = Unit::new_unchecked(normal_vec);
-
-        Ok(Some(Hit::new(distance, normal, normal)?))
     }
 }

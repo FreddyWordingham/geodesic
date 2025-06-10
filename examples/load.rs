@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .progress_count(total_pixels as u64)
         .map(|(row, col)| -> Result<((usize, usize), Precision), GeodesicError> {
             let ray = camera.generate_ray([row, col])?;
-            let light_value = if let Some((_hit_instance_index, hit)) = scene.intersect(&ray)? {
+            let light_value = if let Some(hit) = scene.intersect(&ray)? {
                 // Calculate light contribution
                 let ambient = 0.1;
                 let hit_position = ray.origin + ray.direction.scale(hit.distance - 0.01);

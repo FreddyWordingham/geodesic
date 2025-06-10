@@ -7,7 +7,7 @@ use crate::{
     error::{Result, TransformationError},
     geometry::{Aabb, Mesh},
     rt::{Hit, Ray},
-    traits::Bounded,
+    traits::{Bounded, Traceable},
 };
 
 /// `Mesh` instance allowing for transformations without copying the original data.
@@ -55,36 +55,6 @@ impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
         &self.world_aabb
     }
 
-    /// Test for an intersection between a `Ray` and the `Instance`.
-    /// Transforms the ray to object space, performs intersection, then transforms result back.
-    pub fn intersect(&self, ray: &Ray<T>) -> Result<Option<(usize, Hit<T>)>> {
-        // Transform ray to object space
-        let object_ray = self.transform_ray_to_object_space(ray);
-
-        // Intersect with the mesh in object space
-        match self.mesh.intersect(&object_ray)? {
-            None => Ok(None),
-            Some((triangle_index, mut hit)) => {
-                // Transform hit back to world space
-                self.transform_hit_to_world_space(&mut hit, ray, &object_ray);
-                Ok(Some((triangle_index, hit)))
-            }
-        }
-    }
-
-    /// Test if `Ray` intersects any `Triangle` in the instance (shadow ray optimization).
-    pub fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> Result<bool> {
-        // Transform ray to object space
-        let object_ray = self.transform_ray_to_object_space(ray);
-
-        // Transform max_distance from world space to object space
-        // We need to account for how the transformation affects distances along the ray
-        let world_endpoint = ray.origin + ray.direction.scale(max_distance);
-        let object_endpoint = self.world_to_object.transform_point(&world_endpoint);
-        let object_max_distance = (object_endpoint - object_ray.origin).norm();
-        self.mesh.intersect_any(&object_ray, object_max_distance)
-    }
-
     /// Transform a `Ray` from world space to object space.
     fn transform_ray_to_object_space(&self, ray: &Ray<T>) -> Ray<T> {
         // Transform origin using the built-in transform_point method
@@ -117,5 +87,36 @@ impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
         // Calculate the distance along the world ray to reach this point
         let to_hit = world_hit_point - world_ray.origin;
         hit.distance = to_hit.dot(&world_ray.direction);
+    }
+}
+
+impl<T: RealField + Copy + ToPrimitive> Traceable<T> for Instance<'_, T> {
+    fn intersect(&self, ray: &Ray<T>) -> Result<Option<Hit<T>>> {
+        // Transform ray to object space
+        let object_ray = self.transform_ray_to_object_space(ray);
+
+        // Intersect with the mesh in object space
+        match self.mesh.intersect(&object_ray)? {
+            None => Ok(None),
+            Some(mut hit) => {
+                // Transform hit back to world space
+                self.transform_hit_to_world_space(&mut hit, ray, &object_ray);
+                // The object_index from the mesh is the triangle index within the mesh
+                // This is preserved through the transformation
+                Ok(Some(hit))
+            }
+        }
+    }
+
+    fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> Result<bool> {
+        // Transform ray to object space
+        let object_ray = self.transform_ray_to_object_space(ray);
+
+        // Transform max_distance from world space to object space
+        // We need to account for how the transformation affects distances along the ray
+        let world_endpoint = ray.origin + ray.direction.scale(max_distance);
+        let object_endpoint = self.world_to_object.transform_point(&world_endpoint);
+        let object_max_distance = (object_endpoint - object_ray.origin).norm();
+        self.mesh.intersect_any(&object_ray, object_max_distance)
     }
 }

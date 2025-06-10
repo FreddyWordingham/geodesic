@@ -5,6 +5,8 @@ use crate::error::{GeometryError, Result};
 /// Records details of a ray intersection with a geometric surface.
 #[derive(Debug, Clone)]
 pub struct Hit<T: RealField + Copy> {
+    /// Index of the internal geometry which was hit.
+    pub index: usize,
     /// The distance to intersection.
     pub distance: T,
     /// The geometric normal at the intersection point.
@@ -15,7 +17,12 @@ pub struct Hit<T: RealField + Copy> {
 
 impl<T: RealField + Copy> Hit<T> {
     /// Construct a new `Hit` instance.
-    pub fn new(distance: T, geometric_normal: Unit<Vector3<T>>, interpolated_normal: Unit<Vector3<T>>) -> Result<Self> {
+    pub fn new(
+        index: usize,
+        distance: T,
+        geometric_normal: Unit<Vector3<T>>,
+        interpolated_normal: Unit<Vector3<T>>,
+    ) -> Result<Self> {
         if distance < T::zero() {
             return Err(GeometryError::NegativeIntersectionDistance {
                 distance: distance.to_string(),
@@ -24,6 +31,7 @@ impl<T: RealField + Copy> Hit<T> {
         }
 
         Ok(Self {
+            index,
             distance,
             geometric_normal,
             interpolated_normal,

@@ -80,6 +80,6 @@ impl<T: RealField + Copy> Traceable<T> for Sphere<T> {
         let normal_vector = (intersection_point - self.center) / self.radius;
         let normal = Unit::new_normalize(normal_vector);
 
-        Ok(Some(Hit::new(t, normal, normal)?))
+        Ok(Some(Hit::new(0, t, normal, normal)?))
     }
 }

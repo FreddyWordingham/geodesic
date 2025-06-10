@@ -123,6 +123,6 @@ impl<T: RealField + Copy> Traceable<T> for Triangle<T> {
         let interpolated_normal =
             Unit::new_normalize(self.normals[0].scale(w) + self.normals[1].scale(u) + self.normals[2].scale(v));
 
-        Ok(Some(Hit::new(t, self.geometric_normal, interpolated_normal)?))
+        Ok(Some(Hit::new(0, t, self.geometric_normal, interpolated_normal)?))
     }
 }

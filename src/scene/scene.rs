@@ -10,7 +10,7 @@ use crate::{
     geometry::Aabb,
     rt::{Hit, Ray},
     scene::{SceneBuilder, SceneObject},
-    traits::Bounded,
+    traits::{Bounded, Traceable},
 };
 
 /// Scene containing multiple `Traceable` objects.
@@ -38,22 +38,22 @@ impl<'a, T: RealField + Copy + ToPrimitive> Scene<'a, T> {
     pub fn builder() -> SceneBuilder<'a, T> {
         SceneBuilder::default()
     }
-
-    /// Test for an intersection between a ray and any object in the `Scene`.
-    /// Returns the closest intersection if any, along with the object index.
-    pub fn intersect(&self, ray: &Ray<T>) -> Result<Option<(usize, Hit<T>)>> {
-        self.bvh.intersect(ray, &self.objects)
-    }
-
-    /// Test if a `Ray` intersects any object in the scene (shadow ray optimization).
-    /// This is faster than `Self::intersect` when you only need to know if there's any intersection.
-    pub fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> Result<bool> {
-        self.bvh.intersect_any(ray, &self.objects, max_distance)
-    }
 }
 
 impl<T: RealField + Copy + ToPrimitive> Bounded<T> for Scene<'_, T> {
     fn aabb(&self) -> Result<Cow<Aabb<T>>> {
         self.bvh.aabb()
+    }
+}
+
+impl<T: RealField + Copy + ToPrimitive> Traceable<T> for Scene<'_, T> {
+    fn intersect(&self, ray: &Ray<T>) -> Result<Option<Hit<T>>> {
+        // Use the BVH to find the closest intersection
+        // The BVH returns the object index within the scene
+        self.bvh.intersect(ray, &self.objects).map(|opt| opt.map(|(_, hit)| hit))
+    }
+
+    fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> Result<bool> {
+        self.bvh.intersect_any(ray, &self.objects, max_distance)
     }
 }

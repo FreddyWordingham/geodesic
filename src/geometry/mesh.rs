@@ -9,7 +9,7 @@ use crate::{
     error::{FileParsingError, Result},
     geometry::{Aabb, Triangle},
     rt::{Hit, Ray},
-    traits::Bounded,
+    traits::{Bounded, Traceable},
 };
 
 /// Internal transient structure used to represent a `Triangle` in the `Mesh` using vertex and normal indices.
@@ -46,17 +46,6 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
     #[must_use]
     pub const fn bvh(&self) -> &Bvh<T> {
         &self.bvh
-    }
-
-    /// Test for an intersection between a `Ray` and the `Mesh`.
-    /// Returns the closest intersection if any.
-    pub fn intersect(&self, ray: &Ray<T>) -> Result<Option<(usize, Hit<T>)>> {
-        self.bvh.intersect(ray, &self.triangles)
-    }
-
-    /// Test if `Ray` intersects any `Triangle` in the `Mesh` (shadow ray optimization).
-    pub fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> Result<bool> {
-        self.bvh.intersect_any(ray, &self.triangles, max_distance)
     }
 
     /// Load a `Mesh` from a wavefront (.obj) file.
@@ -180,6 +169,21 @@ impl<T: RealField + Copy> Bounded<T> for Mesh<T> {
         }
 
         Ok(Cow::Owned(aabb))
+    }
+}
+
+impl<T: RealField + Copy + ToPrimitive> Traceable<T> for Mesh<T> {
+    fn intersect(&self, ray: &Ray<T>) -> Result<Option<Hit<T>>> {
+        self.bvh.intersect(ray, &self.triangles).map(|opt| {
+            opt.map(|(triangle_index, mut hit)| {
+                hit.index = triangle_index;
+                hit
+            })
+        })
+    }
+
+    fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> Result<bool> {
+        self.bvh.intersect_any(ray, &self.triangles, max_distance)
     }
 }
 

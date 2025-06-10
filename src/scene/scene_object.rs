@@ -45,8 +45,18 @@ impl<T: RealField + Copy + ToPrimitive> Traceable<T> for SceneObject<'_, T> {
             SceneObject::Sphere(sphere) => sphere.intersect(ray),
             SceneObject::Plane(plane) => plane.intersect(ray),
             SceneObject::Triangle(triangle) => triangle.intersect(ray),
-            SceneObject::Mesh(mesh) => mesh.intersect(ray).map(|opt| opt.map(|(_, hit)| hit)),
-            SceneObject::Instance(instance) => instance.intersect(ray).map(|opt| opt.map(|(_, hit)| hit)),
+            SceneObject::Mesh(mesh) => mesh.intersect(ray),
+            SceneObject::Instance(instance) => instance.intersect(ray),
+        }
+    }
+
+    fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> Result<bool> {
+        match self {
+            SceneObject::Sphere(sphere) => sphere.intersect_any(ray, max_distance),
+            SceneObject::Plane(plane) => plane.intersect_any(ray, max_distance),
+            SceneObject::Triangle(triangle) => triangle.intersect_any(ray, max_distance),
+            SceneObject::Mesh(mesh) => mesh.intersect_any(ray, max_distance),
+            SceneObject::Instance(instance) => instance.intersect_any(ray, max_distance),
         }
     }
 }
