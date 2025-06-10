@@ -1,13 +1,14 @@
 use geodesic::prelude::*;
 use std::error::Error;
 
+/// Example of serializing a scene, camera, and assets to JSON files.
 fn main() -> Result<(), Box<dyn Error>> {
     // Camera
     let camera = SerializedCamera {
-        projection: SerializedProjection::Perspective(90.0_f32.to_radians()), // camera projection mode
-        position: [10.0, 10.0, 10.0],                                         // view point
-        look_at: [0.0, 0.0, 3.0],                                             // target point
-        resolution: [600, 800],                                               // [height, width]
+        projection: SerializedProjection::Perspective(90.0_f32), // camera projection mode
+        position: [10.0, 10.0, 10.0],                            // view point
+        look_at: [0.0, 0.0, 3.0],                                // target point
+        resolution: [6000, 8000],                                // [height, width]
     };
     camera.save("./inputs/camera.json")?;
 
@@ -26,10 +27,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let objects = vec![
         SerializedSceneObject::Plane([0.0, 0.0, 0.0], [0.0, 0.0, 1.0]),
         SerializedSceneObject::Sphere([0.0, 0.0, 0.0], 1.0),
-        SerializedSceneObject::Triangle(
-            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-            [[0.0, 1.0, 0.0], [1.0, 1.0, 1.0], [1.0, 2.0, 1.0]],
-        ),
         SerializedSceneObject::Instance("tree".to_string(), None),
     ];
     let scene = SerializedScene { objects };
