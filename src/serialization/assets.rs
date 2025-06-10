@@ -3,7 +3,7 @@ use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, str::FromStr};
 
-use crate::{bvh::BvhConfig, geometry::Mesh, scene::Assets};
+use crate::{bvh::BvhConfig, error::Result, geometry::Mesh, scene::Assets};
 
 /// Serialized representation of `Assets` used by `Scene`s.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,12 +20,12 @@ impl<T: RealField + Copy + ToPrimitive + FromStr> SerializedAssets<T> {
     /// # Errors
     ///
     /// Returns an error if any of the `Mesh` files cannot be loaded.
-    pub fn build(self) -> Result<Assets<T>, String> {
+    pub fn build(self) -> Result<Assets<T>> {
         let bvh_config = self.bvh_config.unwrap_or_default();
         let mut assets = Assets::empty(bvh_config.clone());
         for (name, path) in self.meshes {
             let mesh = Mesh::load(&bvh_config, path);
-            assets = assets.add_mesh(&name, mesh)?;
+            assets = assets.add_mesh(&name, mesh?)?;
         }
         Ok(assets)
     }

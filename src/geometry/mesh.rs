@@ -6,6 +6,7 @@ use std::{borrow::Cow, fs::read_to_string, path::Path, str::FromStr};
 
 use crate::{
     bvh::{Bvh, BvhConfig},
+    error::{FileParsingError, Result},
     geometry::{Aabb, Triangle},
     rt::{Hit, Ray},
     traits::Bounded,
@@ -30,9 +31,9 @@ pub struct Mesh<T: RealField + Copy> {
 
 impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
     /// Construct a new `Mesh` instance.
-    pub fn new(bvh_config: &BvhConfig<T>, triangles: Vec<Triangle<T>>) -> Self {
-        let bvh = Bvh::new(bvh_config, &triangles);
-        Self { triangles, bvh }
+    pub fn new(bvh_config: &BvhConfig<T>, triangles: Vec<Triangle<T>>) -> Result<Self> {
+        let bvh = Bvh::new(bvh_config, &triangles)?;
+        Ok(Self { triangles, bvh })
     }
 
     /// Get a reference to the `Triangle`s in this `Mesh`.
@@ -49,35 +50,29 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
 
     /// Test for an intersection between a `Ray` and the `Mesh`.
     /// Returns the closest intersection if any.
-    pub fn intersect(&self, ray: &Ray<T>) -> Option<(usize, Hit<T>)> {
+    pub fn intersect(&self, ray: &Ray<T>) -> Result<Option<(usize, Hit<T>)>> {
         self.bvh.intersect(ray, &self.triangles)
     }
 
     /// Test if `Ray` intersects any `Triangle` in the `Mesh` (shadow ray optimization).
-    pub fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> bool {
+    pub fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> Result<bool> {
         self.bvh.intersect_any(ray, &self.triangles, max_distance)
     }
 
     /// Load a `Mesh` from a wavefront (.obj) file.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the .obj file is malformed or does not conform to the expected format.
-    pub fn load<P: AsRef<Path>>(bvh_config: &BvhConfig<T>, path: P) -> Self
+    pub fn load<P: AsRef<Path>>(bvh_config: &BvhConfig<T>, path: P) -> Result<Self>
     where
         T: FromStr,
     {
-        let file_string =
-            read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read .obj file at path: {}", path.as_ref().display()));
+        let file_string = read_to_string(&path).map_err(|_| FileParsingError::FileNotFound {
+            path: path.as_ref().display().to_string(),
+        })?;
+
         Self::from_wavefront(bvh_config, &file_string)
     }
 
     /// Construct a `Mesh` from a wavefront (.obj) string.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the wavefront data is malformed or does not conform to the expected format.
-    pub fn from_wavefront(bvh_config: &BvhConfig<T>, obj_string: &str) -> Self
+    pub fn from_wavefront(bvh_config: &BvhConfig<T>, obj_string: &str) -> Result<Self>
     where
         T: FromStr,
     {
@@ -85,38 +80,76 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
         let mut normals = Vec::new();
         let mut faces = Vec::new();
 
-        // Parse the OBJ file
-        for line in obj_string.lines() {
+        for (line_num, line) in obj_string.lines().enumerate() {
             let tokens: Vec<&str> = line.split_whitespace().collect();
             if tokens.is_empty() {
                 continue;
             }
 
-            match *tokens
-                .first()
-                .expect("Invalid .obj data: Expected at least item in each wavefront file line")
-            {
+            match tokens[0] {
                 "v" => {
-                    let vertex = parse_vertex_position(&tokens[1..]);
+                    if tokens.len() < 4 {
+                        return Err(FileParsingError::MissingVertexPosition { line: line_num + 1 }.into());
+                    }
+                    let vertex = parse_vertex_position(&tokens[1..], line_num + 1)?;
                     vertices.push(vertex);
                 }
                 "vn" => {
-                    let normal = parse_vertex_normal(&tokens[1..]);
+                    if tokens.len() < 4 {
+                        return Err(FileParsingError::MissingVertexNormal { line: line_num + 1 }.into());
+                    }
+                    let normal = parse_vertex_normal(&tokens[1..], line_num + 1)?;
                     normals.push(normal);
                 }
                 "f" => {
-                    let face = parse_face(&tokens[1..]);
+                    if tokens.len() < 4 {
+                        return Err(FileParsingError::InvalidFaceData {
+                            line: line_num + 1,
+                            message: "Face must have at least 3 vertices".to_string(),
+                        }
+                        .into());
+                    }
+                    let face = parse_face(&tokens[1..], line_num + 1)?;
                     faces.push(face);
                 }
                 _ => {}
             }
         }
 
-        // Pre-build all triangles with computed data
+        if vertices.is_empty() {
+            return Err(FileParsingError::InvalidObjFormat {
+                message: "No vertices found in OBJ file".to_string(),
+            }
+            .into());
+        }
+
+        if faces.is_empty() {
+            return Err(FileParsingError::InvalidObjFormat {
+                message: "No faces found in OBJ file".to_string(),
+            }
+            .into());
+        }
+
         let triangles = faces
             .into_iter()
             .map(|face| {
-                Triangle::new(
+                if face.vertex_indices.iter().any(|&i| i >= vertices.len()) {
+                    return Err(FileParsingError::InvalidFaceData {
+                        line: 0, // We've lost line info here, could be improved
+                        message: "Face references non-existent vertex".to_string(),
+                    }
+                    .into());
+                }
+
+                if face.normal_indices.iter().any(|&i| i >= normals.len()) {
+                    return Err(FileParsingError::InvalidFaceData {
+                        line: 0,
+                        message: "Face references non-existent normal".to_string(),
+                    }
+                    .into());
+                }
+
+                Ok(Triangle::new(
                     [
                         vertices[face.vertex_indices[0]],
                         vertices[face.vertex_indices[1]],
@@ -127,92 +160,136 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
                         normals[face.normal_indices[1]],
                         normals[face.normal_indices[2]],
                     ],
-                )
+                ))
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
 
-        // Build BVH from the pre-built triangles
-        let bvh = Bvh::new(bvh_config, &triangles);
-
-        Self { triangles, bvh }
+        let bvh = Bvh::new(bvh_config, &triangles)?;
+        Ok(Self { triangles, bvh })
     }
 }
 
 impl<T: RealField + Copy> Bounded<T> for Mesh<T> {
-    fn aabb(&self) -> Cow<Aabb<T>> {
+    fn aabb(&self) -> Result<Cow<Aabb<T>>> {
         // Initialise with the first triangle's AABB
-        let mut aabb = self.triangles[0].aabb().into_owned();
+        let mut aabb = self.triangles[0].aabb()?.into_owned();
 
         // Merge AABBs of all triangles
         for triangle in &self.triangles[1..] {
-            aabb = aabb.merge(&triangle.aabb());
+            aabb = aabb.merge(&triangle.aabb()?.into_owned())?;
         }
 
-        Cow::Owned(aabb)
+        Ok(Cow::Owned(aabb))
     }
 }
 
 // == Utility functions ==
 
 /// Parse a vertex position from an .obj file string.
-fn parse_vertex_position<T: RealField + Copy + FromStr>(coords: &[&str]) -> Point3<T> {
-    assert!(coords.len() == 3, "Vertex position must have exactly 3 coordinates");
-    let x = coords[0]
-        .parse::<T>()
-        .unwrap_or_else(|_| panic!("Invalid x coordinate for vertex position"));
-    let y = coords[1]
-        .parse::<T>()
-        .unwrap_or_else(|_| panic!("Invalid y coordinate for vertex position"));
-    let z = coords[2]
-        .parse::<T>()
-        .unwrap_or_else(|_| panic!("Invalid z coordinate for vertex position"));
-    Point3::new(x, y, z)
+fn parse_vertex_position<T: RealField + Copy + FromStr>(coords: &[&str], line: usize) -> Result<Point3<T>> {
+    if coords.len() != 3 {
+        return Err(FileParsingError::InvalidFaceData {
+            line,
+            message: "Vertex position must have exactly 3 coordinates".to_string(),
+        }
+        .into());
+    }
+
+    let parse_coord = |coord: &str| -> Result<T> {
+        coord.parse::<T>().map_err(|_| {
+            FileParsingError::InvalidCoordinate {
+                value: coord.to_string(),
+                line,
+            }
+            .into()
+        })
+    };
+
+    let x = parse_coord(coords[0])?;
+    let y = parse_coord(coords[1])?;
+    let z = parse_coord(coords[2])?;
+
+    Ok(Point3::new(x, y, z))
 }
 
 /// Parse a vertex normal from an .obj file string.
-fn parse_vertex_normal<T: RealField + Copy + FromStr>(coords: &[&str]) -> Unit<Vector3<T>> {
-    assert!(coords.len() == 3, "Vertex normal must have exactly 3 coordinates");
-    let xn = coords[0]
-        .parse::<T>()
-        .unwrap_or_else(|_| panic!("Invalid x coordinate for vertex normal"));
-    let yn = coords[1]
-        .parse::<T>()
-        .unwrap_or_else(|_| panic!("Invalid y coordinate for vertex normal"));
-    let zn = coords[2]
-        .parse::<T>()
-        .unwrap_or_else(|_| panic!("Invalid z coordinate for vertex normal"));
-    Unit::new_normalize(Vector3::new(xn, yn, zn))
+fn parse_vertex_normal<T: RealField + Copy + FromStr>(coords: &[&str], line: usize) -> Result<Unit<Vector3<T>>> {
+    if coords.len() != 3 {
+        return Err(FileParsingError::InvalidFaceData {
+            line,
+            message: "Vertex normal must have exactly 3 coordinates".to_string(),
+        }
+        .into());
+    }
+
+    let parse_coord = |coord: &str| -> Result<T> {
+        coord.parse::<T>().map_err(|_| {
+            FileParsingError::InvalidCoordinate {
+                value: coord.to_string(),
+                line,
+            }
+            .into()
+        })
+    };
+
+    let xn = parse_coord(coords[0])?;
+    let yn = parse_coord(coords[1])?;
+    let zn = parse_coord(coords[2])?;
+
+    Ok(Unit::new_normalize(Vector3::new(xn, yn, zn)))
 }
 
 /// Parse a face from an .obj file string.
-fn parse_face(tokens: &[&str]) -> Face {
-    assert!(
-        tokens.len() == 3,
-        "Face must have exactly 3 vertex indices (must be triangular face mesh)"
-    );
+fn parse_face(tokens: &[&str], line: usize) -> Result<Face> {
+    if tokens.len() != 3 {
+        return Err(FileParsingError::InvalidFaceData {
+            line,
+            message: "Face must have exactly 3 vertex indices (triangular faces only)".to_string(),
+        }
+        .into());
+    }
 
     let mut vertex_indices = [0; 3];
     let mut normal_indices = [0; 3];
 
     for (i, token) in tokens.iter().enumerate() {
-        vertex_indices[i] = token
-            .split('/')
-            .next()
-            .expect("Face must specify a vertex position index")
+        let parts: Vec<&str> = token.split('/').collect();
+
+        if parts.is_empty() {
+            return Err(FileParsingError::InvalidFaceData {
+                line,
+                message: "Face must specify vertex indices".to_string(),
+            }
+            .into());
+        }
+
+        vertex_indices[i] = parts[0]
             .parse::<usize>()
-            .expect("Invalid face vertex position index!")
-            - 1;
-        normal_indices[i] = token
-            .split('/')
-            .next_back()
-            .expect("Face must specify a vertex normal index")
+            .map_err(|_| FileParsingError::InvalidFaceData {
+                line,
+                message: format!("Invalid vertex index: {}", parts[0]),
+            })?
+            .saturating_sub(1); // OBJ indices are 1-based
+
+        if parts.len() < 3 {
+            return Err(FileParsingError::InvalidFaceData {
+                line,
+                message: "Face must specify normal indices".to_string(),
+            }
+            .into());
+        }
+
+        normal_indices[i] = parts[2]
             .parse::<usize>()
-            .expect("Invalid face vertex normal index")
-            - 1;
+            .map_err(|_| FileParsingError::InvalidFaceData {
+                line,
+                message: format!("Invalid normal index: {}", parts[2]),
+            })?
+            .saturating_sub(1); // OBJ indices are 1-based
     }
 
-    Face {
+    Ok(Face {
         vertex_indices,
         normal_indices,
-    }
+    })
 }

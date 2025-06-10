@@ -1,5 +1,7 @@
 use nalgebra::{RealField, Unit, Vector3};
 
+use crate::error::{GeometryError, Result};
+
 /// Records details of a ray intersection with a geometric surface.
 #[derive(Debug, Clone)]
 pub struct Hit<T: RealField + Copy> {
@@ -13,12 +15,18 @@ pub struct Hit<T: RealField + Copy> {
 
 impl<T: RealField + Copy> Hit<T> {
     /// Construct a new `Hit` instance.
-    pub fn new(distance: T, geometric_normal: Unit<Vector3<T>>, interpolated_normal: Unit<Vector3<T>>) -> Self {
-        debug_assert!(distance >= T::zero(), "Distance to intersection must be non-negative");
-        Self {
+    pub fn new(distance: T, geometric_normal: Unit<Vector3<T>>, interpolated_normal: Unit<Vector3<T>>) -> Result<Self> {
+        if distance < T::zero() {
+            return Err(GeometryError::NegativeIntersectionDistance {
+                distance: distance.to_string(),
+            }
+            .into());
+        }
+
+        Ok(Self {
             distance,
             geometric_normal,
             interpolated_normal,
-        }
+        })
     }
 }

@@ -1,7 +1,7 @@
 use nalgebra::RealField;
 use serde::{Deserialize, Serialize};
 
-use crate::scene::Projection;
+use crate::{error::Result, scene::Projection, traits::FallibleNumeric};
 
 const DEGREES_TO_RADIANS: f64 = std::f64::consts::PI / 180.0;
 
@@ -20,13 +20,13 @@ impl<T: RealField + Copy> SerializedProjection<T> {
     /// # Panics
     ///
     /// In practice, this function will not panic.
-    pub fn build(self) -> Projection<T> {
-        match self {
+    pub fn build(self) -> Result<Projection<T>> {
+        Ok(match self {
             Self::Perspective(fov) => {
-                let to_rad = T::from_f64(DEGREES_TO_RADIANS).unwrap();
+                let to_rad = T::try_from_f64(DEGREES_TO_RADIANS)?;
                 Projection::Perspective(fov * to_rad)
             }
             Self::Orthographic(width) => Projection::Orthographic(width),
-        }
+        })
     }
 }

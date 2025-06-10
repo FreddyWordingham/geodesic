@@ -2,7 +2,7 @@ use nalgebra::{Point3, RealField};
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 
-use crate::{scene::Camera, serialization::SerializedProjection};
+use crate::{error::Result, scene::Camera, serialization::SerializedProjection};
 
 /// Serialized representation of a `Camera`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,10 +19,10 @@ pub struct SerializedCamera<T: RealField + Copy> {
 
 impl<T: RealField + Copy + ToPrimitive> SerializedCamera<T> {
     /// Construct a `Camera` instance.
-    pub fn build(self) -> Camera<T> {
+    pub fn build(self) -> Result<Camera<T>> {
         let position = Point3::new(self.position[0], self.position[1], self.position[2]);
         let look_at = Point3::new(self.look_at[0], self.look_at[1], self.look_at[2]);
-        let projection = self.projection.build();
+        let projection = self.projection.build()?;
         Camera::new(position, look_at, projection, self.resolution)
     }
 }

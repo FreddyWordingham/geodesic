@@ -5,6 +5,7 @@ use num_traits::ToPrimitive;
 use std::borrow::Cow;
 
 use crate::{
+    error::Result,
     geometry::{Aabb, Mesh, Plane, Sphere, Triangle},
     rt::{Hit, Ray},
     scene::Instance,
@@ -27,25 +28,25 @@ pub enum SceneObject<'a, T: RealField + Copy> {
 }
 
 impl<T: RealField + Copy + ToPrimitive> Bounded<T> for SceneObject<'_, T> {
-    fn aabb(&self) -> Cow<Aabb<T>> {
+    fn aabb(&self) -> Result<Cow<Aabb<T>>> {
         match self {
             SceneObject::Sphere(sphere) => sphere.aabb(),
             SceneObject::Plane(plane) => plane.aabb(),
             SceneObject::Triangle(triangle) => triangle.aabb(),
             SceneObject::Mesh(mesh) => mesh.aabb(),
-            SceneObject::Instance(instance) => Cow::Borrowed(instance.world_aabb()),
+            SceneObject::Instance(instance) => Ok(Cow::Borrowed(instance.world_aabb())),
         }
     }
 }
 
 impl<T: RealField + Copy + ToPrimitive> Traceable<T> for SceneObject<'_, T> {
-    fn intersect(&self, ray: &Ray<T>) -> Option<Hit<T>> {
+    fn intersect(&self, ray: &Ray<T>) -> Result<Option<Hit<T>>> {
         match self {
             SceneObject::Sphere(sphere) => sphere.intersect(ray),
             SceneObject::Plane(plane) => plane.intersect(ray),
             SceneObject::Triangle(triangle) => triangle.intersect(ray),
-            SceneObject::Mesh(mesh) => mesh.intersect(ray).map(|(_, hit)| hit),
-            SceneObject::Instance(instance) => instance.intersect(ray).map(|(_, hit)| hit),
+            SceneObject::Mesh(mesh) => mesh.intersect(ray).map(|opt| opt.map(|(_, hit)| hit)),
+            SceneObject::Instance(instance) => instance.intersect(ray).map(|opt| opt.map(|(_, hit)| hit)),
         }
     }
 }

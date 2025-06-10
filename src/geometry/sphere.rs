@@ -4,9 +4,10 @@ use nalgebra::{Point3, RealField, Unit, Vector3};
 use std::borrow::Cow;
 
 use crate::{
+    error::{GeometryError, Result},
     geometry::Aabb,
     rt::{Hit, Ray},
-    traits::{Bounded, Traceable},
+    traits::{Bounded, FallibleNumeric, Traceable},
 };
 
 /// Sphere structure defined by a center point and a radius.
@@ -20,21 +21,26 @@ pub struct Sphere<T: RealField + Copy> {
 
 impl<T: RealField + Copy> Sphere<T> {
     /// Construct a new `Sphere` instance.
-    pub fn new(center: Point3<T>, radius: T) -> Self {
-        debug_assert!(radius >= T::zero(), "Radius must be non-negative");
-        Self { center, radius }
+    pub fn new(center: Point3<T>, radius: T) -> Result<Self> {
+        if radius < T::zero() {
+            return Err(GeometryError::InvalidRadius {
+                radius: format!("{:?}", radius),
+            }
+            .into());
+        }
+        Ok(Self { center, radius })
     }
 }
 
 impl<T: RealField + Copy> Bounded<T> for Sphere<T> {
-    fn aabb(&self) -> Cow<Aabb<T>> {
+    fn aabb(&self) -> Result<Cow<Aabb<T>>> {
         let r = Vector3::new(self.radius, self.radius, self.radius);
-        Cow::Owned(Aabb::new(self.center - r, self.center + r))
+        Ok(Cow::Owned(Aabb::new(self.center - r, self.center + r)?))
     }
 }
 
 impl<T: RealField + Copy> Traceable<T> for Sphere<T> {
-    fn intersect(&self, ray: &Ray<T>) -> Option<Hit<T>> {
+    fn intersect(&self, ray: &Ray<T>) -> Result<Option<Hit<T>>> {
         let epsilon = T::default_epsilon();
 
         // Vector from ray origin to sphere center
@@ -42,19 +48,19 @@ impl<T: RealField + Copy> Traceable<T> for Sphere<T> {
 
         // Quadratic equation coefficients: at^2 + bt + c = 0
         let a = ray.direction.dot(&ray.direction);
-        let b = T::from_u8(2)? * oc.dot(&ray.direction);
+        let b = T::try_from_u8(2)? * oc.dot(&ray.direction);
         let c = oc.dot(&oc) - self.radius * self.radius;
 
         // Discriminant
-        let discriminant = b * b - T::from_u8(4)? * a * c;
+        let discriminant = b * b - T::try_from_u8(4)? * a * c;
 
         // No intersection if discriminant is negative
         if discriminant < T::zero() {
-            return None;
+            return Ok(None);
         }
 
         let sqrt_discriminant = discriminant.sqrt();
-        let two_a = T::from_u8(2)? * a;
+        let two_a = T::try_from_u8(2)? * a;
 
         // Calculate both roots
         let t1 = (-b - sqrt_discriminant) / two_a;
@@ -66,7 +72,7 @@ impl<T: RealField + Copy> Traceable<T> for Sphere<T> {
         } else if t2 > epsilon {
             t2
         } else {
-            return None; // No valid intersection
+            return Ok(None); // No valid intersection
         };
 
         // Calculate intersection point and normal
@@ -74,6 +80,6 @@ impl<T: RealField + Copy> Traceable<T> for Sphere<T> {
         let normal_vector = (intersection_point - self.center) / self.radius;
         let normal = Unit::new_normalize(normal_vector);
 
-        Some(Hit::new(t, normal, normal))
+        Ok(Some(Hit::new(t, normal, normal)?))
     }
 }

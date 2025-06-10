@@ -2,6 +2,7 @@ use nalgebra::{Point3, RealField, Unit, Vector3};
 use std::borrow::Cow;
 
 use crate::{
+    error::Result,
     geometry::Aabb,
     rt::{Hit, Ray},
     traits::{Bounded, Traceable},
@@ -41,7 +42,7 @@ impl<T: RealField + Copy> Triangle<T> {
 
 impl<T: RealField + Copy> Bounded<T> for Triangle<T> {
     /// Compute the `Aabb` of the `Triangle`.
-    fn aabb(&self) -> Cow<Aabb<T>> {
+    fn aabb(&self) -> Result<Cow<Aabb<T>>> {
         let min_x = self
             .vertex0
             .x
@@ -74,12 +75,15 @@ impl<T: RealField + Copy> Bounded<T> for Triangle<T> {
             .max(self.vertex0.z + self.edge1.z)
             .max(self.vertex0.z + self.edge2.z);
 
-        Cow::Owned(Aabb::new(Point3::new(min_x, min_y, min_z), Point3::new(max_x, max_y, max_z)))
+        Ok(Cow::Owned(Aabb::new(
+            Point3::new(min_x, min_y, min_z),
+            Point3::new(max_x, max_y, max_z),
+        )?))
     }
 }
 
 impl<T: RealField + Copy> Traceable<T> for Triangle<T> {
-    fn intersect(&self, ray: &Ray<T>) -> Option<Hit<T>> {
+    fn intersect(&self, ray: &Ray<T>) -> Result<Option<Hit<T>>> {
         // Use a relative epsilon based on the triangle's size
         let edge_length_sq = self.edge1.norm_squared().max(self.edge2.norm_squared());
         let epsilon = T::default_epsilon() * edge_length_sq.sqrt();
@@ -89,7 +93,7 @@ impl<T: RealField + Copy> Traceable<T> for Triangle<T> {
 
         // Early exit for parallel rays
         if a.abs() < epsilon {
-            return None;
+            return Ok(None);
         }
 
         let inv_a = T::one() / a;
@@ -98,20 +102,20 @@ impl<T: RealField + Copy> Traceable<T> for Triangle<T> {
 
         // Early exits for barycentric coordinates
         if u < T::zero() || u > T::one() {
-            return None;
+            return Ok(None);
         }
 
         let q = s.cross(&self.edge1);
         let v = inv_a * ray.direction.dot(&q);
 
         if v < T::zero() || u + v > T::one() {
-            return None;
+            return Ok(None);
         }
 
         let t = inv_a * self.edge2.dot(&q);
 
         if t <= epsilon {
-            return None;
+            return Ok(None);
         }
 
         // Optimized normal interpolation
@@ -119,6 +123,6 @@ impl<T: RealField + Copy> Traceable<T> for Triangle<T> {
         let interpolated_normal =
             Unit::new_normalize(self.normals[0].scale(w) + self.normals[1].scale(u) + self.normals[2].scale(v));
 
-        Some(Hit::new(t, self.geometric_normal, interpolated_normal))
+        Ok(Some(Hit::new(t, self.geometric_normal, interpolated_normal)?))
     }
 }

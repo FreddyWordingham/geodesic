@@ -6,6 +6,7 @@ use std::borrow::Cow;
 
 use crate::{
     bvh::{Bvh, BvhConfig},
+    error::{Result, SceneError},
     geometry::Aabb,
     rt::{Hit, Ray},
     scene::{SceneBuilder, SceneObject},
@@ -23,14 +24,13 @@ pub struct Scene<'a, T: RealField + Copy + ToPrimitive> {
 
 impl<'a, T: RealField + Copy + ToPrimitive> Scene<'a, T> {
     /// Construct a new `Scene` instance.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the `objects` vector is empty. A `Scene` must contain at least one object.
-    pub fn new(config: &BvhConfig<T>, objects: Vec<SceneObject<'a, T>>) -> Self {
-        assert!(!objects.is_empty(), "Scene must contain at least one object");
-        let bvh = Bvh::new(config, &objects);
-        Self { objects, bvh }
+    pub fn new(config: &BvhConfig<T>, objects: Vec<SceneObject<'a, T>>) -> Result<Self> {
+        if objects.is_empty() {
+            return Err(SceneError::EmptyScene.into());
+        }
+
+        let bvh = Bvh::new(config, &objects)?;
+        Ok(Self { objects, bvh })
     }
 
     /// Return a builder for constructing a `Scene`.
@@ -41,19 +41,19 @@ impl<'a, T: RealField + Copy + ToPrimitive> Scene<'a, T> {
 
     /// Test for an intersection between a ray and any object in the `Scene`.
     /// Returns the closest intersection if any, along with the object index.
-    pub fn intersect(&self, ray: &Ray<T>) -> Option<(usize, Hit<T>)> {
+    pub fn intersect(&self, ray: &Ray<T>) -> Result<Option<(usize, Hit<T>)>> {
         self.bvh.intersect(ray, &self.objects)
     }
 
     /// Test if a `Ray` intersects any object in the scene (shadow ray optimization).
     /// This is faster than `Self::intersect` when you only need to know if there's any intersection.
-    pub fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> bool {
+    pub fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> Result<bool> {
         self.bvh.intersect_any(ray, &self.objects, max_distance)
     }
 }
 
 impl<T: RealField + Copy + ToPrimitive> Bounded<T> for Scene<'_, T> {
-    fn aabb(&self) -> Cow<Aabb<T>> {
+    fn aabb(&self) -> Result<Cow<Aabb<T>>> {
         self.bvh.aabb()
     }
 }

@@ -4,9 +4,10 @@ use nalgebra::{Point3, RealField, Unit, Vector3};
 use std::borrow::Cow;
 
 use crate::{
+    error::Result,
     geometry::Aabb,
     rt::{Hit, Ray},
-    traits::{Bounded, Traceable},
+    traits::{Bounded, FallibleNumeric, Traceable},
 };
 
 /// Infinite plane defined by a surface location and the normal vector.
@@ -49,18 +50,18 @@ impl<T: RealField + Copy> Plane<T> {
 }
 
 impl<T: RealField + Copy> Bounded<T> for Plane<T> {
-    fn aabb(&self) -> Cow<Aabb<T>> {
+    fn aabb(&self) -> Result<Cow<Aabb<T>>> {
         // Infinite planes have infinite bounding boxes so we use very large values to approximate infinity
-        let large_value = T::from_f64(1e12).unwrap_or_else(|| T::max_value().unwrap());
-        Cow::Owned(Aabb::new(
+        let large_value = T::try_from_f64(1e12)?;
+        Ok(Cow::Owned(Aabb::new(
             Point3::new(-large_value, -large_value, -large_value),
             Point3::new(large_value, large_value, large_value),
-        ))
+        )?))
     }
 }
 
 impl<T: RealField + Copy> Traceable<T> for Plane<T> {
-    fn intersect(&self, ray: &Ray<T>) -> Option<Hit<T>> {
+    fn intersect(&self, ray: &Ray<T>) -> Result<Option<Hit<T>>> {
         let epsilon = T::default_epsilon();
 
         // Calculate the denominator of the ray-plane intersection formula
@@ -68,7 +69,7 @@ impl<T: RealField + Copy> Traceable<T> for Plane<T> {
 
         // Check if ray is parallel to the plane (denominator near zero)
         if denominator.abs() < epsilon {
-            return None;
+            return Ok(None);
         }
 
         // Calculate the distance along the ray to the intersection point
@@ -77,7 +78,7 @@ impl<T: RealField + Copy> Traceable<T> for Plane<T> {
 
         // Check if intersection is behind the ray origin
         if t < epsilon {
-            return None;
+            return Ok(None);
         }
 
         // For planes, geometric normal and interpolated normal are the same
@@ -89,6 +90,6 @@ impl<T: RealField + Copy> Traceable<T> for Plane<T> {
             Unit::new_unchecked(-self.normal.as_ref())
         };
 
-        Some(Hit::new(t, normal, normal))
+        Ok(Some(Hit::new(t, normal, normal)?))
     }
 }

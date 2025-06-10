@@ -3,6 +3,7 @@ use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    error::{Result, SceneError},
     scene::{Assets, Scene, SceneObject},
     serialization::SerializedSceneObject,
 };
@@ -20,10 +21,16 @@ impl<T: RealField + Copy + ToPrimitive> SerializedScene<T> {
     /// # Panics
     ///
     /// Panics if the `objects` vector is empty. A `Scene` must contain at least one object.
-    pub fn build(self, assets: &Assets<T>) -> Scene<'_, T> {
-        let objects: Vec<SceneObject<T>> = self.objects.into_iter().map(|obj| obj.build(assets)).collect();
-        // Ensure we have at least one object to create a valid scene
-        assert!(!objects.is_empty(), "Scene must contain at least one object");
+    pub fn build(self, assets: &Assets<T>) -> Result<Scene<'_, T>> {
+        let objects: Vec<SceneObject<T>> = self
+            .objects
+            .into_iter()
+            .map(|obj| obj.build(assets))
+            .collect::<Result<Vec<_>>>()?;
+
+        if objects.is_empty() {
+            return Err(SceneError::EmptyScene.into());
+        }
         Scene::new(&assets.bvh_config, objects)
     }
 }

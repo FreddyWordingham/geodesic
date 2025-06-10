@@ -4,8 +4,9 @@ use nalgebra::{Matrix4, Point3, RealField, Unit, Vector3};
 use std::borrow::Cow;
 
 use crate::{
+    error::{GeometryError, Result},
     rt::{Hit, Ray},
-    traits::{Bounded, Traceable},
+    traits::{Bounded, FallibleNumeric, Traceable},
 };
 
 /// Axis-aligned bounding box.
@@ -19,12 +20,19 @@ pub struct Aabb<T: RealField + Copy> {
 
 impl<T: RealField + Copy> Aabb<T> {
     /// Construct a new `Aabb` instance.
-    pub fn new(mins: Point3<T>, maxs: Point3<T>) -> Self {
-        debug_assert!(
-            mins.x <= maxs.x && mins.y <= maxs.y && mins.z <= maxs.z,
-            "Invalid AABB bounds"
-        );
-        Self { mins, maxs }
+    pub fn new(mins: Point3<T>, maxs: Point3<T>) -> Result<Self> {
+        if mins.x > maxs.x || mins.y > maxs.y || mins.z > maxs.z {
+            return Err(GeometryError::InvalidAabbBounds {
+                min_x: format!("{:?}", mins.x),
+                min_y: format!("{:?}", mins.y),
+                min_z: format!("{:?}", mins.z),
+                max_x: format!("{:?}", maxs.x),
+                max_y: format!("{:?}", maxs.y),
+                max_z: format!("{:?}", maxs.z),
+            }
+            .into());
+        }
+        Ok(Self { mins, maxs })
     }
 
     /// Create an 'empty' `Aabb` with extreme bounds.
@@ -33,13 +41,13 @@ impl<T: RealField + Copy> Aabb<T> {
     ///
     /// In practice this method will never panic.
     #[must_use]
-    pub fn empty() -> Self {
-        let min_value = T::min_value().unwrap();
-        let max_value = T::max_value().unwrap();
-        Self {
+    pub fn empty() -> Result<Self> {
+        let min_value = T::try_min_value()?;
+        let max_value = T::try_max_value()?;
+        Ok(Self {
             mins: Point3::new(max_value, max_value, max_value),
             maxs: Point3::new(min_value, min_value, min_value),
-        }
+        })
     }
 
     /// Calculate the center of the `Aabb`.
@@ -47,13 +55,13 @@ impl<T: RealField + Copy> Aabb<T> {
     /// # Panics
     ///
     /// In practice this method will never panic.
-    pub fn centre(&self) -> Point3<T> {
-        let two = T::from_u8(2).unwrap();
-        Point3::new(
+    pub fn centre(&self) -> Result<Point3<T>> {
+        let two = T::try_from_u8(2)?;
+        Ok(Point3::new(
             (self.mins.x + self.maxs.x) / two,
             (self.mins.y + self.maxs.y) / two,
             (self.mins.z + self.maxs.z) / two,
-        )
+        ))
     }
 
     /// Calculate the surface area of an `Aabb`.
@@ -61,14 +69,14 @@ impl<T: RealField + Copy> Aabb<T> {
     /// # Panics
     ///
     /// In practice this method will never panic.
-    pub fn surface_area(&self) -> T {
+    pub fn surface_area(&self) -> Result<T> {
         let extent = [
             self.maxs[0] - self.mins[0],
             self.maxs[1] - self.mins[1],
             self.maxs[2] - self.mins[2],
         ];
-        let two = T::from_u8(2).unwrap();
-        two * ((extent[0] * extent[1]) + (extent[1] * extent[2]) + (extent[2] * extent[0]))
+        let two = T::try_from_u8(2)?;
+        Ok(two * ((extent[0] * extent[1]) + (extent[1] * extent[2]) + (extent[2] * extent[0])))
     }
 
     /// Calculate the volume of an `Aabb`.
@@ -83,7 +91,7 @@ impl<T: RealField + Copy> Aabb<T> {
 
     /// Return a new `Aabb` which encapsulates this `Aabb` and another `Aabb`.
     #[must_use]
-    pub fn merge(&self, other: &Self) -> Self {
+    pub fn merge(&self, other: &Self) -> Result<Self> {
         let new_mins = Point3::new(
             self.mins.x.min(other.mins.x),
             self.mins.y.min(other.mins.y),
@@ -99,7 +107,7 @@ impl<T: RealField + Copy> Aabb<T> {
 
     /// Apply a transformation to the `Aabb`.
     #[must_use]
-    pub fn transform(&self, transform: &Matrix4<T>) -> Self {
+    pub fn transform(&self, transform: &Matrix4<T>) -> Result<Self> {
         // Instead of collecting all corners into a Vec, compute min/max on the fly
         let first_corner = Point3::new(self.mins.x, self.mins.y, self.mins.z);
         let transformed_first = transform.transform_point(&first_corner);
@@ -142,9 +150,9 @@ impl<T: RealField + Copy> Aabb<T> {
     /// # Panics
     ///
     /// In practice this method will never panic.
-    pub fn intersect_any(&self, ray: &Ray<T>) -> bool {
+    pub fn intersect_any(&self, ray: &Ray<T>) -> Result<bool> {
         let mut t_min = T::zero();
-        let mut t_max = T::max_value().unwrap();
+        let mut t_max = T::try_max_value()?;
 
         // Use pre-computed inverse directions from Ray struct
         for i in 0..3 {
@@ -156,7 +164,7 @@ impl<T: RealField + Copy> Aabb<T> {
             // Check for parallel ray (inv_direction will be inf/-inf)
             if !inv_dir_i.is_finite() {
                 if ray_origin_i < box_min_i || ray_origin_i > box_max_i {
-                    return false;
+                    return Ok(false);
                 }
                 continue;
             }
@@ -174,16 +182,16 @@ impl<T: RealField + Copy> Aabb<T> {
 
             // Early exit if no intersection
             if t_min > t_max {
-                return false;
+                return Ok(false);
             }
         }
 
         // If the maximum distance is negative, the box is behind the ray
-        match t_max.partial_cmp(&T::zero()) {
+        Ok(match t_max.partial_cmp(&T::zero()) {
             Some(std::cmp::Ordering::Less) => false,
             Some(_) => true,
             None => unimplemented!("t_max is NaN, cannot determine intersection"),
-        }
+        })
     }
 
     /// Test for an intersection between a `Ray` and the `Aabb`.
@@ -191,9 +199,9 @@ impl<T: RealField + Copy> Aabb<T> {
     /// # Panics
     ///
     /// In practice this method will never panic.
-    pub fn intersect_distance(&self, ray: &Ray<T>) -> Option<T> {
+    pub fn intersect_distance(&self, ray: &Ray<T>) -> Result<Option<T>> {
         let mut t_min = T::zero();
-        let mut t_max = T::max_value().unwrap();
+        let mut t_max = T::try_max_value()?;
 
         // Use pre-computed inverse directions from Ray struct
         for i in 0..3 {
@@ -205,7 +213,7 @@ impl<T: RealField + Copy> Aabb<T> {
             // Check for parallel ray (inv_direction will be inf/-inf)
             if !inv_dir_i.is_finite() {
                 if ray_origin_i < box_min_i || ray_origin_i > box_max_i {
-                    return None;
+                    return Ok(None);
                 }
                 continue;
             }
@@ -223,28 +231,28 @@ impl<T: RealField + Copy> Aabb<T> {
 
             // Early exit if no intersection
             if t_min > t_max {
-                return None;
+                return Ok(None);
             }
         }
 
         if t_max < T::zero() {
-            return None;
+            return Ok(None);
         }
 
-        Some(if t_min >= T::zero() { t_min } else { t_max })
+        Ok(Some(if t_min >= T::zero() { t_min } else { t_max }))
     }
 }
 
 impl<T: RealField + Copy> Bounded<T> for Aabb<T> {
-    fn aabb(&self) -> Cow<Self> {
-        Cow::Borrowed(self)
+    fn aabb(&self) -> Result<Cow<Self>> {
+        Ok(Cow::Borrowed(self))
     }
 }
 
 impl<T: RealField + Copy> Traceable<T> for Aabb<T> {
-    fn intersect(&self, ray: &Ray<T>) -> Option<Hit<T>> {
+    fn intersect(&self, ray: &Ray<T>) -> Result<Option<Hit<T>>> {
         let mut t_min = T::zero();
-        let mut t_max = T::max_value().unwrap();
+        let mut t_max = T::try_max_value()?;
         let mut normal_axis = 0;
         let mut normal_sign = T::one();
 
@@ -258,7 +266,7 @@ impl<T: RealField + Copy> Traceable<T> for Aabb<T> {
             // Check for parallel ray (inv_direction will be inf/-inf)
             if !inv_dir_i.is_finite() {
                 if ray_origin_i < box_min_i || ray_origin_i > box_max_i {
-                    return None;
+                    return Ok(None);
                 }
                 continue;
             }
@@ -283,13 +291,13 @@ impl<T: RealField + Copy> Traceable<T> for Aabb<T> {
 
             // Early exit if no intersection
             if t_min > t_max {
-                return None;
+                return Ok(None);
             }
         }
 
         // No intersection if the box is behind the ray
         if t_max < T::zero() {
-            return None;
+            return Ok(None);
         }
 
         // Choose the appropriate intersection distance
@@ -328,6 +336,6 @@ impl<T: RealField + Copy> Traceable<T> for Aabb<T> {
         normal_vec[normal_axis] = normal_sign;
         let normal = Unit::new_unchecked(normal_vec);
 
-        Some(Hit::new(distance, normal, normal))
+        Ok(Some(Hit::new(distance, normal, normal)?))
     }
 }

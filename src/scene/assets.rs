@@ -4,7 +4,11 @@ use nalgebra::RealField;
 use num_traits::ToPrimitive;
 use std::collections::HashMap;
 
-use crate::{bvh::BvhConfig, geometry::Mesh};
+use crate::{
+    bvh::BvhConfig,
+    error::{Result, SceneError},
+    geometry::Mesh,
+};
 
 /// Builder for constructing `Scene` instances.
 #[derive(Debug)]
@@ -25,15 +29,11 @@ impl<T: RealField + Copy + ToPrimitive> Assets<T> {
     }
 
     /// Add a `Mesh` to the `Assets`.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if a `Mesh` with the same ID already exists in the `Assets`.
-    pub fn add_mesh(mut self, id: &str, mesh: Mesh<T>) -> Result<Self, String> {
+    pub fn add_mesh(mut self, id: &str, mesh: Mesh<T>) -> Result<Self> {
         if self.meshes.contains_key(id) {
-            return Err(format!("Mesh with ID '{id}' already exists"));
+            return Err(SceneError::DuplicateAssetId { id: id.to_string() }.into());
         }
-        let _prev_value = self.meshes.insert(id.into(), mesh);
+        self.meshes.insert(id.into(), mesh);
         Ok(self)
     }
 }

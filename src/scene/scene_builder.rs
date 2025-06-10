@@ -5,6 +5,7 @@ use num_traits::ToPrimitive;
 
 use crate::{
     bvh::BvhConfig,
+    error::{Result, SceneError},
     geometry::{Mesh, Sphere, Triangle},
     scene::{Instance, Scene, SceneObject},
 };
@@ -28,10 +29,10 @@ impl<'a, T: RealField + Copy + ToPrimitive> SceneBuilder<'a, T> {
 
     /// Add a `Sphere` object to the scene.
     #[must_use]
-    pub fn add_sphere(mut self, centre: Point3<T>, radius: T) -> Self {
-        let sphere = Sphere::new(centre, radius);
+    pub fn add_sphere(mut self, centre: Point3<T>, radius: T) -> Result<Self> {
+        let sphere = Sphere::new(centre, radius)?;
         self.objects.push(SceneObject::Sphere(sphere));
-        self
+        Ok(self)
     }
 
     /// Add a `Triangle` object to the scene.
@@ -44,19 +45,18 @@ impl<'a, T: RealField + Copy + ToPrimitive> SceneBuilder<'a, T> {
 
     /// Add a `Instance` object to the scene.
     #[must_use]
-    pub fn add_instance(mut self, mesh: &'a Mesh<T>, transform: Matrix4<T>) -> Self {
-        let instance = Instance::new(mesh, transform);
+    pub fn add_instance(mut self, mesh: &'a Mesh<T>, transform: Matrix4<T>) -> Result<Self> {
+        let instance = Instance::new(mesh, transform)?;
         self.objects.push(SceneObject::Instance(instance));
-        self
+        Ok(self)
     }
 
     /// Build the `Scene` with the current configuration and `SceneObjects`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the `objects` vector is empty. A `Scene` must contain at least one object.
-    pub fn build(self) -> Scene<'a, T> {
-        assert!(!self.objects.is_empty(), "Scene must contain at least one object");
+    pub fn build(self) -> Result<Scene<'a, T>> {
+        if self.objects.is_empty() {
+            return Err(SceneError::EmptyScene.into());
+        }
+
         Scene::new(&self.bvh_config, self.objects)
     }
 }

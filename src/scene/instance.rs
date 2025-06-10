@@ -4,6 +4,7 @@ use nalgebra::{Matrix3, Matrix4, RealField, Unit};
 use num_traits::ToPrimitive;
 
 use crate::{
+    error::{Result, TransformationError},
     geometry::{Aabb, Mesh},
     rt::{Hit, Ray},
     traits::Bounded,
@@ -26,26 +27,22 @@ pub struct Instance<'a, T: RealField + Copy> {
 
 impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
     /// Construct a new `Mesh` instance.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the transformation matrix is not invertible.
-    pub fn new(mesh: &'a Mesh<T>, transform: Matrix4<T>) -> Self {
-        let world_to_object = transform.try_inverse().expect("Transformation matrix must be invertible");
-        let object_to_world = transform;
-        let world_aabb = mesh.aabb().transform(&object_to_world);
+    pub fn new(mesh: &'a Mesh<T>, transform: Matrix4<T>) -> Result<Self> {
+        let world_to_object = transform.try_inverse().ok_or(TransformationError::NonInvertibleMatrix)?;
 
-        // Pre-compute normal transformation matrix
+        let object_to_world = transform;
+        let world_aabb = mesh.aabb()?.transform(&object_to_world)?;
+
         let upper_3x3 = world_to_object.fixed_view::<3, 3>(0, 0);
         let normal_transform = upper_3x3.transpose();
 
-        Self {
+        Ok(Self {
             mesh,
             world_to_object,
             object_to_world,
             world_aabb,
             normal_transform,
-        }
+        })
     }
 
     /// Get a reference to the underlying `Mesh`.
@@ -60,21 +57,23 @@ impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
 
     /// Test for an intersection between a `Ray` and the `Instance`.
     /// Transforms the ray to object space, performs intersection, then transforms result back.
-    pub fn intersect(&self, ray: &Ray<T>) -> Option<(usize, Hit<T>)> {
+    pub fn intersect(&self, ray: &Ray<T>) -> Result<Option<(usize, Hit<T>)>> {
         // Transform ray to object space
         let object_ray = self.transform_ray_to_object_space(ray);
 
         // Intersect with the mesh in object space
-        let (triangle_index, mut hit) = self.mesh.intersect(&object_ray)?;
-
-        // Transform hit back to world space
-        self.transform_hit_to_world_space(&mut hit, ray, &object_ray);
-
-        Some((triangle_index, hit))
+        match self.mesh.intersect(&object_ray)? {
+            None => return Ok(None),
+            Some((triangle_index, mut hit)) => {
+                // Transform hit back to world space
+                self.transform_hit_to_world_space(&mut hit, ray, &object_ray);
+                Ok(Some((triangle_index, hit)))
+            }
+        }
     }
 
     /// Test if `Ray` intersects any `Triangle` in the instance (shadow ray optimization).
-    pub fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> bool {
+    pub fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> Result<bool> {
         // Transform ray to object space
         let object_ray = self.transform_ray_to_object_space(ray);
 

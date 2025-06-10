@@ -3,8 +3,11 @@
 use nalgebra::RealField;
 use serde::{Deserialize, Serialize};
 
-use crate::config::{
-    DEFAULT_INTERSECT_COST, DEFAULT_MAX_DEPTH, DEFAULT_MAX_SHAPES_PER_NODE, DEFAULT_SAH_BUCKETS, DEFAULT_TRAVERSE_COST,
+use crate::{
+    config::{
+        DEFAULT_INTERSECT_COST, DEFAULT_MAX_DEPTH, DEFAULT_MAX_SHAPES_PER_NODE, DEFAULT_SAH_BUCKETS, DEFAULT_TRAVERSE_COST,
+    },
+    error::{BvhConfigError, Result},
 };
 
 /// Configuration structure for constructing a Bounding Volume Hierarchy (BVH).
@@ -24,26 +27,49 @@ pub struct BvhConfig<T: RealField + Copy> {
 
 impl<T: RealField + Copy> BvhConfig<T> {
     /// Construct a new `BvhConfig` instance.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the `traverse_cost` or `intersect_cost` is not positive,
-    /// if `sah_buckets` is not positive,
-    /// if `max_shapes_per_node` is not greater than two,
-    /// or if `max_depth` is not greater than zero.
-    pub fn new(traverse_cost: T, intersect_cost: T, sah_buckets: usize, max_shapes_per_node: usize, max_depth: usize) -> Self {
-        assert!(traverse_cost > T::zero(), "Traverse cost must be greater than zero.");
-        assert!(intersect_cost > T::zero(), "Intersect cost must be greater than zero.");
-        assert!(sah_buckets > 0, "Number of SAH buckets must be greater than zero.");
-        assert!(max_shapes_per_node > 2, "Maximum shapes per node must be greater than two.");
-        assert!(max_depth > 0, "Maximum depth must be greater than zero.");
-        Self {
+    pub fn new(
+        traverse_cost: T,
+        intersect_cost: T,
+        sah_buckets: usize,
+        max_shapes_per_node: usize,
+        max_depth: usize,
+    ) -> Result<Self> {
+        if traverse_cost <= T::zero() {
+            return Err(BvhConfigError::InvalidTraverseCost {
+                cost: format!("{:?}", traverse_cost),
+            }
+            .into());
+        }
+
+        if intersect_cost <= T::zero() {
+            return Err(BvhConfigError::InvalidIntersectCost {
+                cost: format!("{:?}", intersect_cost),
+            }
+            .into());
+        }
+
+        if sah_buckets == 0 {
+            return Err(BvhConfigError::InvalidSahBuckets { buckets: sah_buckets }.into());
+        }
+
+        if max_shapes_per_node <= 2 {
+            return Err(BvhConfigError::InvalidMaxShapesPerNode {
+                count: max_shapes_per_node,
+            }
+            .into());
+        }
+
+        if max_depth == 0 {
+            return Err(BvhConfigError::InvalidMaxDepth { depth: max_depth }.into());
+        }
+
+        Ok(Self {
             traverse_cost,
             intersect_cost,
             sah_buckets,
             max_shapes_per_node,
             max_depth,
-        }
+        })
     }
 }
 
@@ -56,5 +82,6 @@ impl<T: RealField + Copy> Default for BvhConfig<T> {
             DEFAULT_MAX_SHAPES_PER_NODE,
             DEFAULT_MAX_DEPTH,
         )
+        .unwrap()
     }
 }
