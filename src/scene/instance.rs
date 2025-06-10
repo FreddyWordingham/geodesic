@@ -63,7 +63,7 @@ impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
 
         // Intersect with the mesh in object space
         match self.mesh.intersect(&object_ray)? {
-            None => return Ok(None),
+            None => Ok(None),
             Some((triangle_index, mut hit)) => {
                 // Transform hit back to world space
                 self.transform_hit_to_world_space(&mut hit, ray, &object_ray);

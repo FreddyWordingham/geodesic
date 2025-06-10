@@ -28,7 +28,6 @@ impl<'a, T: RealField + Copy + ToPrimitive> SceneBuilder<'a, T> {
     }
 
     /// Add a `Sphere` object to the scene.
-    #[must_use]
     pub fn add_sphere(mut self, centre: Point3<T>, radius: T) -> Result<Self> {
         let sphere = Sphere::new(centre, radius)?;
         self.objects.push(SceneObject::Sphere(sphere));
@@ -44,7 +43,6 @@ impl<'a, T: RealField + Copy + ToPrimitive> SceneBuilder<'a, T> {
     }
 
     /// Add a `Instance` object to the scene.
-    #[must_use]
     pub fn add_instance(mut self, mesh: &'a Mesh<T>, transform: Matrix4<T>) -> Result<Self> {
         let instance = Instance::new(mesh, transform)?;
         self.objects.push(SceneObject::Instance(instance));

@@ -45,7 +45,6 @@ impl<T: RealField + Copy + ToPrimitive> Bvh<T> {
     /// # Panics
     ///
     /// Panics if `indices` or `nodes` are empty.
-    #[must_use]
     pub fn construct_directly(indices: Vec<usize>, nodes: Vec<BvhNode<T>>, depth: usize) -> Result<Self> {
         if indices.is_empty() {
             return Err(BvhError::EmptyGeometry.into());

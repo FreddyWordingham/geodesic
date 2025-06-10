@@ -40,7 +40,6 @@ impl<T: RealField + Copy> Aabb<T> {
     /// # Panics
     ///
     /// In practice this method will never panic.
-    #[must_use]
     pub fn empty() -> Result<Self> {
         let min_value = T::try_min_value()?;
         let max_value = T::try_max_value()?;
@@ -90,7 +89,6 @@ impl<T: RealField + Copy> Aabb<T> {
     }
 
     /// Return a new `Aabb` which encapsulates this `Aabb` and another `Aabb`.
-    #[must_use]
     pub fn merge(&self, other: &Self) -> Result<Self> {
         let new_mins = Point3::new(
             self.mins.x.min(other.mins.x),
@@ -106,7 +104,6 @@ impl<T: RealField + Copy> Aabb<T> {
     }
 
     /// Apply a transformation to the `Aabb`.
-    #[must_use]
     pub fn transform(&self, transform: &Matrix4<T>) -> Result<Self> {
         // Instead of collecting all corners into a Vec, compute min/max on the fly
         let first_corner = Point3::new(self.mins.x, self.mins.y, self.mins.z);
