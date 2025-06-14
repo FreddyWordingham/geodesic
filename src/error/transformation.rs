@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 /// Specific error type for transformation operations.
-#[derive(Error, Debug)]
+#[derive(Debug, Copy, Clone, Error)]
 pub enum TransformationError {
     #[error("Matrix is not invertible")]
     NonInvertibleMatrix,
