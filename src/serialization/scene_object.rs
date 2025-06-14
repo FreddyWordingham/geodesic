@@ -25,9 +25,13 @@ pub enum SerializedSceneObject<T: RealField + Copy> {
 impl<T: RealField + Copy + ToPrimitive> SerializedSceneObject<T> {
     /// Construct a `SceneObject` instance.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the `Mesh` identifier does not exist in the provided `Assets`.
+    /// Returns an error if:
+    /// - Sphere creation fails due to invalid radius
+    /// - Triangle creation fails
+    /// - Mesh asset is not found in the provided assets
+    /// - Instance creation fails due to invalid transformation
     pub fn build(self, assets: &Assets<T>) -> Result<SceneObject<'_, T>> {
         Ok(match self {
             Self::Sphere(center, radius) => SceneObject::Sphere(Sphere::new(center.into(), radius)?),

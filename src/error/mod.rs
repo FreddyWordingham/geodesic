@@ -138,42 +138,42 @@ pub type Result<T> = std::result::Result<T, GeodesicError>;
 
 impl From<BvhError> for GeodesicError {
     fn from(err: BvhError) -> Self {
-        GeodesicError::InvalidGeometry(err.to_string())
+        Self::InvalidGeometry(err.to_string())
     }
 }
 
 impl From<BvhConfigError> for GeodesicError {
     fn from(err: BvhConfigError) -> Self {
-        GeodesicError::InvalidConfiguration(err.to_string())
+        Self::InvalidConfiguration(err.to_string())
     }
 }
 
 impl From<FileParsingError> for GeodesicError {
     fn from(err: FileParsingError) -> Self {
-        GeodesicError::FileParsing(err.to_string())
+        Self::FileParsing(err.to_string())
     }
 }
 
 impl From<GeometryError> for GeodesicError {
     fn from(err: GeometryError) -> Self {
-        GeodesicError::InvalidGeometry(err.to_string())
+        Self::InvalidGeometry(err.to_string())
     }
 }
 
 impl From<NumericError> for GeodesicError {
     fn from(err: NumericError) -> Self {
-        GeodesicError::Math(err.to_string())
+        Self::Math(err.to_string())
     }
 }
 
 impl From<SceneError> for GeodesicError {
     fn from(err: SceneError) -> Self {
-        GeodesicError::SceneConstruction(err.to_string())
+        Self::SceneConstruction(err.to_string())
     }
 }
 
 impl From<TransformationError> for GeodesicError {
     fn from(err: TransformationError) -> Self {
-        GeodesicError::InvalidTransformation(err.to_string())
+        Self::InvalidTransformation(err.to_string())
     }
 }

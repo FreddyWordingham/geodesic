@@ -18,9 +18,12 @@ pub struct SerializedScene<T: RealField + Copy> {
 impl<T: RealField + Copy + ToPrimitive> SerializedScene<T> {
     /// Construct a `Scene` instance.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the `objects` vector is empty. A `Scene` must contain at least one object.
+    /// Returns an error if:
+    /// - Any scene object fails to build
+    /// - The resulting objects vector is empty
+    /// - Scene construction fails
     pub fn build(self, assets: &Assets<T>) -> Result<Scene<'_, T>> {
         let objects: Vec<SceneObject<T>> = self
             .objects

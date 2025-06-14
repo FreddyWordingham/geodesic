@@ -24,6 +24,12 @@ pub struct Scene<'a, T: RealField + Copy + ToPrimitive> {
 
 impl<'a, T: RealField + Copy + ToPrimitive> Scene<'a, T> {
     /// Construct a new `Scene` instance.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The objects vector is empty
+    /// - BVH construction fails for the scene objects
     pub fn new(config: &BvhConfig<T>, objects: Vec<SceneObject<'a, T>>) -> Result<Self> {
         if objects.is_empty() {
             return Err(SceneError::EmptyScene.into());

@@ -19,6 +19,12 @@ pub struct SerializedCamera<T: RealField + Copy> {
 
 impl<T: RealField + Copy + ToPrimitive> SerializedCamera<T> {
     /// Construct a `Camera` instance.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Projection building fails
+    /// - Camera construction fails due to invalid parameters
     pub fn build(self) -> Result<Camera<T>> {
         let position = Point3::new(self.position[0], self.position[1], self.position[2]);
         let look_at = Point3::new(self.look_at[0], self.look_at[1], self.look_at[2]);

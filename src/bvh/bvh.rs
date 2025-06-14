@@ -36,11 +36,24 @@ pub struct Bvh<T: RealField + Copy> {
 
 impl<T: RealField + Copy + ToPrimitive> Bvh<T> {
     /// Construct a new `Bvh` instance using a builder and a collection of `Bounded` shapes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The shapes slice is empty
+    /// - BVH construction fails due to invalid configuration
+    /// - Mathematical operations fail during construction
     pub fn new<B: Bounded<T>>(config: &BvhConfig<T>, shapes: &[B]) -> Result<Self> {
         BvhBuilder::new(config).build(shapes)
     }
 
     /// Construct a new `Bvh` instance directly.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The indices vector is empty
+    /// - The nodes vector is empty
     ///
     /// # Panics
     ///
@@ -63,6 +76,13 @@ impl<T: RealField + Copy + ToPrimitive> Bvh<T> {
 
     /// Test for intersections between a `Ray` and geometries in the `Bvh`.
     /// Returns the closest intersection if any.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Ray-shape intersection tests fail
+    /// - Mathematical operations fail during traversal
+    /// - Invalid node indices are encountered
     pub fn intersect<B>(&self, ray: &Ray<T>, shapes: &[B]) -> Result<Option<(usize, Hit<T>)>>
     where
         B: Bounded<T> + Traceable<T>,
@@ -71,6 +91,13 @@ impl<T: RealField + Copy + ToPrimitive> Bvh<T> {
     }
 
     /// Test if a `Ray` intersects any geometry in the `Bvh` (shadow ray optimization).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Ray-shape intersection tests fail
+    /// - Mathematical operations fail during traversal
+    /// - Invalid node indices are encountered
     pub fn intersect_any<B>(&self, ray: &Ray<T>, shapes: &[B], max_distance: T) -> Result<bool>
     where
         B: Bounded<T> + Traceable<T>,

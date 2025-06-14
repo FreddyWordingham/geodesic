@@ -29,11 +29,15 @@ impl<T: RealField + Copy + ToPrimitive> Assets<T> {
     }
 
     /// Add a `Mesh` to the `Assets`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if an asset with the same ID already exists.
     pub fn add_mesh(mut self, id: &str, mesh: Mesh<T>) -> Result<Self> {
         if self.meshes.contains_key(id) {
             return Err(SceneError::DuplicateAssetId { id: id.to_string() }.into());
         }
-        self.meshes.insert(id.into(), mesh);
+        let _unused = self.meshes.insert(id.into(), mesh);
         Ok(self)
     }
 }

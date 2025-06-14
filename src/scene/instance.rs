@@ -27,6 +27,12 @@ pub struct Instance<'a, T: RealField + Copy> {
 
 impl<'a, T: RealField + Copy + ToPrimitive> Instance<'a, T> {
     /// Construct a new `Mesh` instance.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The transformation matrix is not invertible
+    /// - Bounding box transformation fails
     pub fn new(mesh: &'a Mesh<T>, transform: Matrix4<T>) -> Result<Self> {
         let world_to_object = transform.try_inverse().ok_or(TransformationError::NonInvertibleMatrix)?;
 
@@ -96,16 +102,13 @@ impl<T: RealField + Copy + ToPrimitive> Traceable<T> for Instance<'_, T> {
         let object_ray = self.transform_ray_to_object_space(ray);
 
         // Intersect with the mesh in object space
-        match self.mesh.intersect(&object_ray)? {
-            None => Ok(None),
-            Some(mut hit) => {
-                // Transform hit back to world space
-                self.transform_hit_to_world_space(&mut hit, ray, &object_ray);
-                // The object_index from the mesh is the triangle index within the mesh
-                // This is preserved through the transformation
-                Ok(Some(hit))
-            }
-        }
+        (self.mesh.intersect(&object_ray)?).map_or(Ok(None), |mut hit| {
+            // Transform hit back to world space
+            self.transform_hit_to_world_space(&mut hit, ray, &object_ray);
+            // The object_index from the mesh is the triangle index within the mesh
+            // This is preserved through the transformation
+            Ok(Some(hit))
+        })
     }
 
     fn intersect_any(&self, ray: &Ray<T>, max_distance: T) -> Result<bool> {

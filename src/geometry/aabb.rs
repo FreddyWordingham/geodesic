@@ -20,6 +20,10 @@ pub struct Aabb<T: RealField + Copy> {
 
 impl<T: RealField + Copy> Aabb<T> {
     /// Construct a new `Aabb` instance.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any minimum coordinate exceeds its corresponding maximum coordinate.
     pub fn new(mins: Point3<T>, maxs: Point3<T>) -> Result<Self> {
         if mins.x > maxs.x || mins.y > maxs.y || mins.z > maxs.z {
             return Err(GeometryError::InvalidAabbBounds {
@@ -37,9 +41,9 @@ impl<T: RealField + Copy> Aabb<T> {
 
     /// Create an 'empty' `Aabb` with extreme bounds.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// In practice this method will never panic.
+    /// Returns an error if the numeric type doesn't support min/max value operations.
     pub fn empty() -> Result<Self> {
         let min_value = T::try_min_value()?;
         let max_value = T::try_max_value()?;
@@ -51,9 +55,9 @@ impl<T: RealField + Copy> Aabb<T> {
 
     /// Calculate the center of the `Aabb`.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// In practice this method will never panic.
+    /// Returns an error if numeric type conversion fails (e.g., converting 2 to type `T`).
     pub fn centre(&self) -> Result<Point3<T>> {
         let two = T::try_from_u8(2)?;
         Ok(Point3::new(
@@ -65,9 +69,9 @@ impl<T: RealField + Copy> Aabb<T> {
 
     /// Calculate the surface area of an `Aabb`.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// In practice this method will never panic.
+    /// Returns an error if numeric type conversion fails (e.g., converting 2 to type `T`).
     pub fn surface_area(&self) -> Result<T> {
         let extent = [
             self.maxs[0] - self.mins[0],
@@ -89,6 +93,10 @@ impl<T: RealField + Copy> Aabb<T> {
     }
 
     /// Return a new `Aabb` which encapsulates this `Aabb` and another `Aabb`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the merged bounding box has invalid bounds.
     pub fn merge(&self, other: &Self) -> Result<Self> {
         let new_mins = Point3::new(
             self.mins.x.min(other.mins.x),
@@ -104,6 +112,10 @@ impl<T: RealField + Copy> Aabb<T> {
     }
 
     /// Apply a transformation to the `Aabb`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the transformed bounding box has invalid bounds.
     pub fn transform(&self, transform: &Matrix4<T>) -> Result<Self> {
         // Instead of collecting all corners into a Vec, compute min/max on the fly
         let first_corner = Point3::new(self.mins.x, self.mins.y, self.mins.z);
@@ -144,9 +156,9 @@ impl<T: RealField + Copy> Aabb<T> {
 
     /// Test for any intersection.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// In practice this method will never panic.
+    /// Returns an error if mathematical operations fail or if numeric bounds cannot be determined.
     pub fn intersect_any(&self, ray: &Ray<T>) -> Result<bool> {
         let mut t_min = T::zero();
         let mut t_max = T::try_max_value()?;
@@ -193,9 +205,9 @@ impl<T: RealField + Copy> Aabb<T> {
 
     /// Test for an intersection between a `Ray` and the `Aabb`.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// In practice this method will never panic.
+    /// Returns an error if mathematical operations fail or if numeric bounds cannot be determined.
     pub fn intersect_distance(&self, ray: &Ray<T>) -> Result<Option<T>> {
         let mut t_min = T::zero();
         let mut t_max = T::try_max_value()?;

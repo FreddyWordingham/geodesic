@@ -22,6 +22,10 @@ pub struct Camera<T: RealField + Copy> {
 
 impl<T: RealField + Copy> Camera<T> {
     /// Constructs a new `Camera`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either width or height in the resolution is zero.
     pub fn new(position: Point3<T>, look_at: Point3<T>, projection: Projection<T>, resolution: [usize; 2]) -> Result<Self> {
         if resolution[0] == 0 || resolution[1] == 0 {
             return Err(GeometryError::InvalidResolution {
@@ -46,6 +50,12 @@ impl<T: RealField + Copy> Camera<T> {
 
     /// Generate a `Ray` for the given pixel index.
     /// A position of [0, 0] corresponds to the top-left pixel of the image.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The pixel index is out of bounds for the camera resolution
+    /// - Numeric type conversions fail during ray generation
     pub fn generate_ray(&self, pixel_index: [usize; 2]) -> Result<Ray<T>> {
         if pixel_index[0] >= self.resolution[0] || pixel_index[1] >= self.resolution[1] {
             return Err(GeometryError::PixelOutOfBounds {

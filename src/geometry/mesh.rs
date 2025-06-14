@@ -31,6 +31,10 @@ pub struct Mesh<T: RealField + Copy> {
 
 impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
     /// Construct a new `Mesh` instance.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if BVH construction fails for the provided triangles.
     pub fn new(bvh_config: &BvhConfig<T>, triangles: Vec<Triangle<T>>) -> Result<Self> {
         let bvh = Bvh::new(bvh_config, &triangles)?;
         Ok(Self { triangles, bvh })
@@ -49,6 +53,14 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
     }
 
     /// Load a `Mesh` from a wavefront (.obj) file.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The file cannot be read
+    /// - The file contains invalid OBJ format data
+    /// - Numeric parsing fails
+    /// - BVH construction fails
     pub fn load<P: AsRef<Path>>(bvh_config: &BvhConfig<T>, path: P) -> Result<Self>
     where
         T: FromStr,
@@ -61,6 +73,15 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
     }
 
     /// Construct a `Mesh` from a wavefront (.obj) string.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The OBJ string contains invalid format data
+    /// - Required vertex or normal data is missing
+    /// - Face indices are out of bounds
+    /// - Numeric parsing fails
+    /// - BVH construction fails
     pub fn from_wavefront(bvh_config: &BvhConfig<T>, obj_string: &str) -> Result<Self>
     where
         T: FromStr,
@@ -75,22 +96,22 @@ impl<T: RealField + Copy + ToPrimitive> Mesh<T> {
                 continue;
             }
 
-            match tokens[0] {
-                "v" => {
+            match tokens.first() {
+                Some(&"v") => {
                     if tokens.len() < 4 {
                         return Err(FileParsingError::MissingVertexPosition { line: line_num + 1 }.into());
                     }
                     let vertex = parse_vertex_position(&tokens[1..], line_num + 1)?;
                     vertices.push(vertex);
                 }
-                "vn" => {
+                Some(&"vn") => {
                     if tokens.len() < 4 {
                         return Err(FileParsingError::MissingVertexNormal { line: line_num + 1 }.into());
                     }
                     let normal = parse_vertex_normal(&tokens[1..], line_num + 1)?;
                     normals.push(normal);
                 }
-                "f" => {
+                Some(&"f") => {
                     if tokens.len() < 4 {
                         return Err(FileParsingError::InvalidFaceData {
                             line: line_num + 1,

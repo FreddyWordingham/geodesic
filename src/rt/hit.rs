@@ -17,6 +17,10 @@ pub struct Hit<T: RealField + Copy> {
 
 impl<T: RealField + Copy> Hit<T> {
     /// Construct a new `Hit` instance.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the distance is negative.
     pub fn new(
         index: usize,
         distance: T,

@@ -28,6 +28,10 @@ impl<'a, T: RealField + Copy + ToPrimitive> SceneBuilder<'a, T> {
     }
 
     /// Add a `Sphere` object to the scene.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the sphere has invalid parameters (e.g., negative rad
     pub fn add_sphere(mut self, centre: Point3<T>, radius: T) -> Result<Self> {
         let sphere = Sphere::new(centre, radius)?;
         self.objects.push(SceneObject::Sphere(sphere));
@@ -43,6 +47,10 @@ impl<'a, T: RealField + Copy + ToPrimitive> SceneBuilder<'a, T> {
     }
 
     /// Add a `Instance` object to the scene.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the instance cannot be created with the given transformation matrix.
     pub fn add_instance(mut self, mesh: &'a Mesh<T>, transform: Matrix4<T>) -> Result<Self> {
         let instance = Instance::new(mesh, transform)?;
         self.objects.push(SceneObject::Instance(instance));
@@ -50,6 +58,12 @@ impl<'a, T: RealField + Copy + ToPrimitive> SceneBuilder<'a, T> {
     }
 
     /// Build the `Scene` with the current configuration and `SceneObjects`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - No objects have been added to the scene
+    /// - Scene construction fails
     pub fn build(self) -> Result<Scene<'a, T>> {
         if self.objects.is_empty() {
             return Err(SceneError::EmptyScene.into());

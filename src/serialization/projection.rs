@@ -17,9 +17,9 @@ pub enum SerializedProjection<T: RealField + Copy> {
 impl<T: RealField + Copy> SerializedProjection<T> {
     /// Construct an `Projection` instance.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// In practice, this function will not panic.
+    /// Returns an error if numeric type conversion fails when converting degrees to radians.
     pub fn build(self) -> Result<Projection<T>> {
         Ok(match self {
             Self::Perspective(fov) => {

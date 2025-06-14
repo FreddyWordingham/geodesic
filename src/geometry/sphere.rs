@@ -21,10 +21,14 @@ pub struct Sphere<T: RealField + Copy> {
 
 impl<T: RealField + Copy> Sphere<T> {
     /// Construct a new `Sphere` instance.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the radius is negative.
     pub fn new(center: Point3<T>, radius: T) -> Result<Self> {
         if radius < T::zero() {
             return Err(GeometryError::InvalidRadius {
-                radius: format!("{:?}", radius),
+                radius: format!("{radius:?}"),
             }
             .into());
         }

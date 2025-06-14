@@ -27,6 +27,15 @@ pub struct BvhConfig<T: RealField + Copy> {
 
 impl<T: RealField + Copy> BvhConfig<T> {
     /// Construct a new `BvhConfig` instance.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - `traverse_cost` is zero or negative
+    /// - `intersect_cost` is zero or negative  
+    /// - `sah_buckets` is zero
+    /// - `max_shapes_per_node` is less than or equal to 2
+    /// - `max_depth` is zero
     pub fn new(
         traverse_cost: T,
         intersect_cost: T,
@@ -36,14 +45,14 @@ impl<T: RealField + Copy> BvhConfig<T> {
     ) -> Result<Self> {
         if traverse_cost <= T::zero() {
             return Err(BvhConfigError::InvalidTraverseCost {
-                cost: format!("{:?}", traverse_cost),
+                cost: format!("{traverse_cost:?}"),
             }
             .into());
         }
 
         if intersect_cost <= T::zero() {
             return Err(BvhConfigError::InvalidIntersectCost {
-                cost: format!("{:?}", intersect_cost),
+                cost: format!("{intersect_cost:?}"),
             }
             .into());
         }

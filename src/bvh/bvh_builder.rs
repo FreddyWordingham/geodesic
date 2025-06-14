@@ -45,6 +45,13 @@ impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
     }
 
     /// Construct a `Bvh` from a collection of `Bounded` shapes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The shapes slice is empty
+    /// - Bounding box calculations fail
+    /// - Mathematical operations fail during subdivision
     pub fn build<B: Bounded<T>>(mut self, shapes: &[B]) -> Result<Bvh<T>> {
         if shapes.is_empty() {
             return Err(BvhError::EmptyGeometry.into());
@@ -204,7 +211,7 @@ impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
                 for bucket in &buckets[..split_bucket] {
                     if bucket.0 > 0 {
                         left_count += bucket.0;
-                        left_aabb = Some(left_aabb.map(|aabb| aabb.merge(&bucket.1)).unwrap_or(Ok(bucket.1.clone()))?);
+                        left_aabb = Some(left_aabb.map_or_else(|| Ok(bucket.1.clone()), |aabb| aabb.merge(&bucket.1))?);
                     }
                 }
 
@@ -214,7 +221,7 @@ impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
                 for bucket in &buckets[split_bucket..] {
                     if bucket.0 > 0 {
                         right_count += bucket.0;
-                        right_aabb = Some(right_aabb.map(|aabb| aabb.merge(&bucket.1)).unwrap_or(Ok(bucket.1.clone()))?);
+                        right_aabb = Some(right_aabb.map_or_else(|| Ok(bucket.1.clone()), |aabb| aabb.merge(&bucket.1))?);
                     }
                 }
 
