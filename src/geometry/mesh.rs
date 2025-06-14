@@ -165,7 +165,7 @@ impl<T: RealField + Copy> Bounded<T> for Mesh<T> {
 
         // Merge AABBs of all triangles
         for triangle in &self.triangles[1..] {
-            aabb = aabb.merge(&triangle.aabb()?.into_owned())?;
+            aabb = aabb.merge(&*triangle.aabb()?)?;
         }
 
         Ok(Cow::Owned(aabb))

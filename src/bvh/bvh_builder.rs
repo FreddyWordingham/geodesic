@@ -78,7 +78,7 @@ impl<T: RealField + Copy + ToPrimitive> BvhBuilder<T> {
         let start = self.nodes[index].aabb.clone();
         let new_aabb = (0..self.nodes[index].count)
             .map(|i| shapes[self.indices[self.nodes[index].left_child + i]].aabb())
-            .try_fold(start, |acc, aabb| acc.merge(&aabb?.into_owned()))?;
+            .try_fold(start, |acc, aabb| acc.merge(&*aabb?))?;
         self.nodes[index].aabb = new_aabb;
         Ok(())
     }

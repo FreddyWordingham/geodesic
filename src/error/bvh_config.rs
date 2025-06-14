@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 /// Specific error type for `BvhConfig` validation.
+#[expect(clippy::enum_variant_names, reason = "Variant names are descriptive of the error type")]
 #[derive(Error, Debug)]
 pub enum BvhConfigError {
     #[error("Traverse cost must be positive, got: {cost}")]

@@ -73,7 +73,8 @@
 //     clippy::many_single_char_names,
 //     reason = "Allow single character names for brevity in mathematical contexts."
 // )]
-// #![allow(clippy::module_inception, reason = "Modules publicly re-export types of the same name.")]
+
+#![allow(clippy::module_inception, reason = "Modules publicly re-export types of the same name.")]
 
 mod bvh;
 mod config;
